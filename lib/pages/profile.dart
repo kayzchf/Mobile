@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_data.dart';
+import '../arcanova_db.dart';
 import 'login.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -11,41 +12,51 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  // =========================
-  // CONTROLLER EDIT PROFILE
-  // =========================
-
   late TextEditingController namaController;
   late TextEditingController usernameController;
   late TextEditingController emailController;
   final passwordController = TextEditingController();
 
-  // =========================
-  // INIT
-  // =========================
+  Map<String, dynamic>? user;
+
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
 
-    final user = AppData.currentUser;
+    namaController = TextEditingController();
+    usernameController = TextEditingController();
+    emailController = TextEditingController();
 
-    namaController = TextEditingController(
-      text: user?.nama ?? '',
-    );
-
-    usernameController = TextEditingController(
-      text: user?.username ?? '',
-    );
-
-    emailController = TextEditingController(
-      text: user?.email ?? '',
-    );
+    loadUser();
   }
 
-  // =========================
-  // DISPOSE
-  // =========================
+  Future<void> loadUser() async {
+    final userId = AppData.currentUserId;
+
+    if (userId == null) {
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+
+    final data = await ArcanovaDB.instance.getUserById(userId);
+
+    if (!mounted) return;
+
+    setState(() {
+      user = data;
+      isLoading = false;
+    });
+
+    if (data != null) {
+      namaController.text = data['nama'] ?? '';
+      usernameController.text = data['username'] ?? '';
+      emailController.text = data['email'] ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -57,21 +68,16 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
-  // =========================
-  // EDIT PROFILE
-  // =========================
-
+  //edit profil
   void editProfile() {
-    final user = AppData.currentUser;
-
     if (user == null) {
       return;
     }
 
     // Isi controller dengan data terbaru
-    namaController.text = user.nama;
-    usernameController.text = user.username;
-    emailController.text = user.email;
+    namaController.text = user!['nama'] ?? '';
+    usernameController.text = user!['username'] ?? '';
+    emailController.text = user!['email'] ?? '';
     passwordController.clear();
 
     showDialog(
@@ -81,12 +87,10 @@ class _ProfilePageState extends State<ProfilePage> {
           title: const Text(
             'Edit Data Profil',
           ),
-
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // NAMA
                 TextField(
                   controller: namaController,
                   decoration: const InputDecoration(
@@ -99,7 +103,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 const SizedBox(height: 15),
 
-                // USERNAME
                 TextField(
                   controller: usernameController,
                   decoration: const InputDecoration(
@@ -112,7 +115,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 const SizedBox(height: 15),
 
-                // EMAIL
                 TextField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -126,7 +128,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
                 const SizedBox(height: 15),
 
-                // PASSWORD
                 TextField(
                   controller: passwordController,
                   obscureText: true,
@@ -169,14 +170,17 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // =========================
-  // UPDATE PROFILE
-  // =========================
 
-  void updateProfile(BuildContext dialogContext) {
-    final user = AppData.currentUser;
-
+  Future<void> updateProfile(
+    BuildContext dialogContext,
+  ) async {
     if (user == null) {
+      return;
+    }
+
+    final userId = AppData.currentUserId;
+
+    if (userId == null) {
       return;
     }
 
@@ -185,7 +189,6 @@ class _ProfilePageState extends State<ProfilePage> {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
-    // Cek data wajib
     if (nama.isEmpty ||
         username.isEmpty ||
         email.isEmpty) {
@@ -200,56 +203,58 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
-    // Cek username
-    final usernameDipakai = AppData.users.any(
-      (otherUser) =>
-          otherUser != user &&
-          otherUser.username == username,
-    );
+    String passwordFinal = password;
 
-    if (usernameDipakai) {
+    if (passwordFinal.isEmpty) {
+      passwordFinal = user!['password'] ?? '';
+    }
+
+    //update data ke database
+    try {
+      await ArcanovaDB.instance.updateUser(
+        id: userId,
+        nama: nama,
+        username: username,
+        email: email,
+        password: passwordFinal,
+      );
+
+      //ambil data terbaru
+      final updatedUser =
+          await ArcanovaDB.instance.getUserById(userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        user = updatedUser;
+      });
+
+      // Kosongkan password controller
+      passwordController.clear();
+
+      // Tutup dialog
+      Navigator.pop(dialogContext);
+
+      // Notifikasi
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Username sudah digunakan oleh user lain.',
+            'Profil berhasil diperbarui!',
           ),
         ),
       );
+    } catch (e) {
+      if (!mounted) return;
 
-      return;
-    }
-
-    // Update data
-    setState(() {
-      user.nama = nama;
-      user.username = username;
-      user.email = email;
-
-      // Password hanya diubah kalau diisi
-      if (password.isNotEmpty) {
-        user.password = password;
-      }
-    });
-
-    // Kosongkan password
-    passwordController.clear();
-
-    // Tutup dialog edit
-    Navigator.pop(dialogContext);
-
-    // Tampilkan notifikasi
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Profil berhasil diperbarui!',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Username atau email sudah digunakan oleh akun lain.',
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
-
-  // =========================
-  // DELETE ACCOUNT
-  // =========================
 
   void deleteAccount() {
     showDialog(
@@ -278,10 +283,6 @@ class _ProfilePageState extends State<ProfilePage> {
           actionsAlignment: MainAxisAlignment.spaceEvenly,
 
           actions: [
-            // =========================
-            // BATAL
-            // =========================
-
             TextButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
@@ -291,33 +292,33 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
 
-            // =========================
-            // HAPUS
-            // =========================
-
+            //hapus akun
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
               ),
 
-              onPressed: () {
-                final user = AppData.currentUser;
+              onPressed: () async {
+                final userId = AppData.currentUserId;
 
-                if (user != null) {
-                  AppData.users.remove(user);
+                if (userId != null) {
+                  await ArcanovaDB.instance.deleteUser(userId);
                 }
 
-                AppData.currentUser = null;
+                // Hapus session sementara
+                AppData.currentUserId = null;
+
+                if (!mounted) return;
 
                 // Tutup dialog konfirmasi
                 Navigator.pop(dialogContext);
 
-                // Kembali ke halaman login
+                // Kembali ke login
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        const LoginPage(),
+                    builder: (context) => const LoginPage(),
                   ),
                   (route) => false,
                 );
@@ -333,10 +334,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // =========================
-  // INFO DATA
-  // =========================
-
+  //info profil
   Widget infoProfile({
     required IconData icon,
     required String label,
@@ -356,7 +354,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
       child: Row(
         children: [
-          // ICON
           Container(
             width: 42,
             height: 42,
@@ -374,7 +371,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
           const SizedBox(width: 15),
 
-          // TEXT
           Expanded(
             child: Column(
               crossAxisAlignment:
@@ -407,20 +403,28 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // =========================
-  // BUILD
-  // =========================
 
   @override
   Widget build(BuildContext context) {
-    final user = AppData.currentUser;
 
-    // Kalau user tidak ada
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFD8B4FE),
+          ),
+        ),
+      );
+    }
+
     if (user == null) {
       return const Scaffold(
         body: Center(
           child: Text(
             'Data pengguna tidak ditemukan.',
+            style: TextStyle(
+              color: Colors.white,
+            ),
           ),
         ),
       );
@@ -432,10 +436,6 @@ class _ProfilePageState extends State<ProfilePage> {
           'Profil Saya',
         ),
       ),
-
-      // =========================
-      // BODY
-      // =========================
 
       body: Container(
         width: double.infinity,
@@ -458,9 +458,6 @@ class _ProfilePageState extends State<ProfilePage> {
           padding: const EdgeInsets.all(20),
 
           children: [
-            // =========================
-            // FOTO PROFIL
-            // =========================
 
             const Center(
               child: CircleAvatar(
@@ -477,13 +474,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
             const SizedBox(height: 15),
 
-            // =========================
-            // NAMA
-            // =========================
-
             Center(
               child: Text(
-                user.nama,
+                user!['nama'] ?? '',
                 style: const TextStyle(
                   color: Color(0xFFE9D5FF),
                   fontSize: 22,
@@ -496,7 +489,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
             Center(
               child: Text(
-                '@${user.username}',
+                '@${user!['username'] ?? ''}',
                 style: const TextStyle(
                   color: Colors.white54,
                   fontSize: 14,
@@ -506,13 +499,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
             const SizedBox(height: 30),
 
-            // =========================
-            // INFORMASI AKUN
-            // =========================
-
             Card(
               color: const Color(0xFF0F172A),
-
               elevation: 3,
 
               shape: RoundedRectangleBorder(
@@ -542,21 +530,21 @@ class _ProfilePageState extends State<ProfilePage> {
                     infoProfile(
                       icon: Icons.person_outline,
                       label: 'Nama Lengkap',
-                      value: user.nama,
+                      value: user!['nama'] ?? '',
                     ),
 
                     // USERNAME
                     infoProfile(
                       icon: Icons.alternate_email,
                       label: 'Username',
-                      value: user.username,
+                      value: user!['username'] ?? '',
                     ),
 
                     // EMAIL
                     infoProfile(
                       icon: Icons.email_outlined,
                       label: 'Email',
-                      value: user.email,
+                      value: user!['email'] ?? '',
                     ),
                   ],
                 ),
@@ -565,10 +553,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
             const SizedBox(height: 25),
 
-            // =========================
-            // EDIT DATA
-            // =========================
-
+            //edit profil
             SizedBox(
               width: double.infinity,
 
@@ -584,6 +569,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
 
                 style: FilledButton.styleFrom(
+                  foregroundColor: Colors.white,
+
                   padding: const EdgeInsets.symmetric(
                     vertical: 15,
                   ),
@@ -593,10 +580,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
             const SizedBox(height: 15),
 
-            // =========================
-            // HAPUS AKUN
-            // =========================
-
+            //hapus akun
             SizedBox(
               width: double.infinity,
 

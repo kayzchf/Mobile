@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../app_data.dart';
+import '../arcanova_db.dart';
+
 import 'about_us.dart';
 import 'bantuan.dart';
 import 'hijriah.dart';
@@ -21,12 +23,47 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
 
-  // =========================
-  // LOGOUT
-  // =========================
+  String namaUser = 'User';
+  bool isLoadingUser = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadUser();
+  }
+
+  Future<void> loadUser() async {
+    final userId = AppData.currentUserId;
+
+    if (userId == null) {
+      setState(() {
+        namaUser = 'User';
+        isLoadingUser = false;
+      });
+      return;
+    }
+
+    try {
+      final user = await ArcanovaDB.instance.getUserById(userId);
+
+      if (mounted) {
+        setState(() {
+          namaUser = user?['nama'] ?? 'User';
+          isLoadingUser = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          namaUser = 'User';
+          isLoadingUser = false;
+        });
+      }
+    }
+  }
 
   void logout() {
-    AppData.currentUser = null;
+    AppData.currentUserId = null;
 
     Navigator.pushAndRemoveUntil(
       context,
@@ -37,13 +74,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // =========================
-  // HOME / MENU UTAMA
-  // =========================
-
+  //menu utama
   Widget buildHome() {
-    final user = AppData.currentUser;
-
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -61,10 +93,6 @@ class _HomePageState extends State<HomePage> {
         children: [
           const SizedBox(height: 10),
 
-          // =========================
-          // HEADER
-          // =========================
-
           Row(
             children: [
               Expanded(
@@ -81,42 +109,49 @@ class _HomePageState extends State<HomePage> {
 
                     const SizedBox(height: 4),
 
-                    Text(
-                      user?.nama ?? 'User',
-                      style: const TextStyle(
-                        color: Color(0xFFE9D5FF),
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    isLoadingUser
+                        ? const SizedBox(
+                            height: 27,
+                            width: 27,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFFD8B4FE),
+                            ),
+                          )
+                        : Text(
+                            namaUser,
+                            style: const TextStyle(
+                              color: Color(0xFFE9D5FF),
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ],
                 ),
               ),
 
               const CircleAvatar(
                 radius: 25,
-                backgroundImage: AssetImage('assets/images/Arcanova Logo.jpeg'),
+                backgroundImage: AssetImage(
+                  'assets/images/Arcanova Logo.jpeg',
+                ),
               ),
             ],
           ),
 
           const SizedBox(height: 35),
 
-          // =========================
-          // JUDUL MENU
-          // =========================
-
-            Center(
-              child: Text(
+          Center(
+            child: Text(
               'ARCANOVA',
-                style: GoogleFonts.cinzelDecorative(
-                  color: Color(0xFFD8B4FE),
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                  ),
+              style: GoogleFonts.cinzelDecorative(
+                color: const Color(0xFFD8B4FE),
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
               ),
             ),
+          ),
 
           const SizedBox(height: 8),
 
@@ -133,20 +168,12 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 25),
 
-          // =========================
-          // MENU 1
-          // =========================
-
           menuCard(
             icon: Icons.auto_awesome,
             title: 'Get to Know Us',
             subtitle: 'Mengenal Arcanova dan Tarot Reader',
             page: const AboutUsPage(),
           ),
-
-          // =========================
-          // MENU 2
-          // =========================
 
           menuCard(
             icon: Icons.person_outline,
@@ -155,10 +182,6 @@ class _HomePageState extends State<HomePage> {
             page: const ProfilePage(),
           ),
 
-          // =========================
-          // MENU 3
-          // =========================
-
           menuCard(
             icon: Icons.style_outlined,
             title: 'Layanan Tarot',
@@ -166,20 +189,12 @@ class _HomePageState extends State<HomePage> {
             page: const LayananPage(),
           ),
 
-          // =========================
-          // MENU 4
-          // =========================
-
           menuCard(
             icon: Icons.calendar_month,
             title: 'Konversi Hijriah & Umur',
             subtitle: 'Hitung usia secara detail',
             page: const HijriahPage(),
           ),
-
-          // =========================
-          // MENU 5
-          // =========================
 
           menuCard(
             icon: Icons.public,
@@ -194,9 +209,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // =========================
-  // CARD MENU
-  // =========================
 
   Widget menuCard({
     required IconData icon,
@@ -228,7 +240,7 @@ class _HomePageState extends State<HomePage> {
           ),
           child: Row(
             children: [
-              // ICON
+
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -243,7 +255,6 @@ class _HomePageState extends State<HomePage> {
 
               const SizedBox(width: 14),
 
-              // TEXT
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,7 +281,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
-              // ARROW
               const Icon(
                 Icons.chevron_right,
                 color: Color(0xFFA78BFA),
@@ -282,9 +292,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // =========================
-  // BUILD
-  // =========================
 
   @override
   Widget build(BuildContext context) {
@@ -301,19 +308,13 @@ class _HomePageState extends State<HomePage> {
         child: pages[selectedIndex],
       ),
 
-      // =========================
-      // BOTTOM NAVIGATION
-      // =========================
-
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
-
         onDestinationSelected: (index) {
           setState(() {
             selectedIndex = index;
           });
         },
-
         destinations: const [
           NavigationDestination(
             icon: Icon(

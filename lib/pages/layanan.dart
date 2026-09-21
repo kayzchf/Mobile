@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_data.dart';
+import '../arcanova_db.dart';
 
 class LayananPage extends StatefulWidget {
   const LayananPage({super.key});
@@ -10,9 +11,15 @@ class LayananPage extends StatefulWidget {
 }
 
 class _LayananPageState extends State<LayananPage> {
-  // =========================
-  // FORMAT RUPIAH
-  // =========================
+
+  List<Map<String, dynamic>> services = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadServices();
+  }
 
   String formatRupiah(int angka) {
     return 'Rp ${angka.toString().replaceAllMapped(
@@ -21,274 +28,157 @@ class _LayananPageState extends State<LayananPage> {
         )}';
   }
 
-  // =========================
-  // TAMBAH LAYANAN
-  // =========================
+  //baca dari database
+  Future<void> loadServices() async {
+    try {
+      final data = await ArcanovaDB.instance.getServices();
 
-  void tambahLayanan() {
-    final namaController = TextEditingController();
-    final durasiController = TextEditingController();
-    final hargaController = TextEditingController();
-    final deskripsiController = TextEditingController();
+      if (!mounted) return;
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Tambah Layanan'),
+      setState(() {
+        services = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
 
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: namaController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama Layanan',
-                  ),
-                ),
+      setState(() {
+        isLoading = false;
+      });
 
-                TextField(
-                  controller: durasiController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Durasi (menit)',
-                  ),
-                ),
-
-                TextField(
-                  controller: hargaController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Harga',
-                  ),
-                ),
-
-                TextField(
-                  controller: deskripsiController,
-                  decoration: const InputDecoration(
-                    labelText: 'Deskripsi',
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Batal'),
-            ),
-
-            FilledButton(
-              onPressed: () {
-                if (namaController.text.isEmpty ||
-                    durasiController.text.isEmpty ||
-                    hargaController.text.isEmpty) {
-                  return;
-                }
-
-                setState(() {
-                  AppData.services.add(
-                    TarotService(
-                      nama: namaController.text,
-                      durasi: int.parse(durasiController.text),
-                      harga: int.parse(hargaController.text),
-                      deskripsi: deskripsiController.text,
-                    ),
-                  );
-                });
-
-                Navigator.pop(context);
-              },
-              child: const Text('Tambah'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // =========================
-  // EDIT LAYANAN
-  // =========================
-
-  void editLayanan(int index) {
-    final layanan = AppData.services[index];
-
-    final namaController = TextEditingController(
-      text: layanan.nama,
-    );
-
-    final durasiController = TextEditingController(
-      text: layanan.durasi.toString(),
-    );
-
-    final hargaController = TextEditingController(
-      text: layanan.harga.toString(),
-    );
-
-    final deskripsiController = TextEditingController(
-      text: layanan.deskripsi,
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Edit Layanan'),
-
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: namaController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama Layanan',
-                  ),
-                ),
-
-                TextField(
-                  controller: durasiController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Durasi (menit)',
-                  ),
-                ),
-
-                TextField(
-                  controller: hargaController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Harga',
-                  ),
-                ),
-
-                TextField(
-                  controller: deskripsiController,
-                  decoration: const InputDecoration(
-                    labelText: 'Deskripsi',
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Batal'),
-            ),
-
-            FilledButton(
-              onPressed: () {
-                if (namaController.text.isEmpty ||
-                    durasiController.text.isEmpty ||
-                    hargaController.text.isEmpty) {
-                  return;
-                }
-
-                setState(() {
-                  layanan.nama = namaController.text;
-                  layanan.durasi =
-                      int.parse(durasiController.text);
-                  layanan.harga =
-                      int.parse(hargaController.text);
-                  layanan.deskripsi =
-                      deskripsiController.text;
-                });
-
-                Navigator.pop(context);
-              },
-              child: const Text('Simpan'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // =========================
-  // HAPUS LAYANAN
-  // =========================
-
-  void hapusLayanan(int index) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Hapus Layanan'),
-
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           content: Text(
-            'Yakin ingin menghapus "${AppData.services[index].nama}"?',
+            'Gagal memuat layanan: $e',
           ),
-
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Batal'),
-            ),
-
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-              ),
-              onPressed: () {
-                setState(() {
-                  AppData.services.removeAt(index);
-                });
-
-                Navigator.pop(context);
-              },
-              child: const Text('Hapus'),
-            ),
-          ],
-        );
-      },
-    );
+        ),
+      );
+    }
   }
 
-  // =========================
-  // BOOKING
-  // =========================
+  //Pesan layanan
+  void pesanLayanan(Map<String, dynamic> layanan) {
+    final userId = AppData.currentUserId;
 
-  void pesanLayanan(TarotService layanan) {
+    // Pastikan user sudah login
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Silakan login terlebih dahulu.',
+          ),
+        ),
+      );
+      return;
+    }
+
     int jumlahSesi = 1;
 
     final voucherController = TextEditingController();
+
+    int discountPercent = 0;
+    int discountAmount = 0;
+
+    String? voucherCodeUsed;
+    bool isCheckingVoucher = false;
+
+    final int harga = (layanan['price'] as num).toInt();
 
     showDialog(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final subtotal =
-                layanan.harga * jumlahSesi;
+            final int subtotal = harga * jumlahSesi;
 
-            final voucher =
-                voucherController.text.trim().toUpperCase();
+            discountAmount =
+                (subtotal * discountPercent / 100).round();
 
-            int diskon = 0;
+            final int total = subtotal - discountAmount;
 
-            if (voucher == 'ARCANOVA10' ||
-                voucher == 'ARC10') {
-              diskon = (subtotal * 0.10).round();
-            } else if (voucher == 'ARCANOVA20') {
-              diskon = (subtotal * 0.20).round();
+            // =========================
+            // CEK VOUCHER
+            // =========================
+
+            Future<void> cekVoucher() async {
+              final code =
+                  voucherController.text.trim().toLowerCase();
+
+              if (code.isEmpty) {
+                setDialogState(() {
+                  discountPercent = 0;
+                  discountAmount = 0;
+                  voucherCodeUsed = null;
+                });
+                return;
+              }
+
+              setDialogState(() {
+                isCheckingVoucher = true;
+              });
+
+              try {
+                final voucher =
+                    await ArcanovaDB.instance.getVoucherByCode(code);
+
+                if (voucher == null) {
+                  setDialogState(() {
+                    discountPercent = 0;
+                    discountAmount = 0;
+                    voucherCodeUsed = null;
+                    isCheckingVoucher = false;
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Kode voucher tidak ditemukan.',
+                      ),
+                    ),
+                  );
+
+                  return;
+                }
+
+                final int percent =
+                    (voucher['discount_percent'] as num).toInt();
+
+                setDialogState(() {
+                  discountPercent = percent;
+                  discountAmount =
+                      (subtotal * percent / 100).round();
+                  voucherCodeUsed = code;
+                  isCheckingVoucher = false;
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Voucher berhasil digunakan: $percent%',
+                    ),
+                  ),
+                );
+              } catch (e) {
+                setDialogState(() {
+                  isCheckingVoucher = false;
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Gagal mengecek voucher: $e',
+                    ),
+                  ),
+                );
+              }
             }
-
-            final total = subtotal - diskon;
 
             return AlertDialog(
               title: Text(
-                'Pesan ${layanan.nama}',
+                'Pesan Layanan',
+                style: Theme.of(context)
+                    .dialogTheme
+                    .titleTextStyle,
               ),
 
               content: SingleChildScrollView(
@@ -298,8 +188,43 @@ class _LayananPageState extends State<LayananPage> {
                       CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${layanan.durasi} menit • '
-                      '${formatRupiah(layanan.harga)} / sesi',
+                      layanan['name'] ?? 'Layanan Tarot',
+                      style: const TextStyle(
+                        color: Color(0xFFE9D5FF),
+                        fontSize: 19,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: Color(0xFFA78BFA),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '${layanan['duration_minutes']} menit',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 5),
+
+                    Text(
+                      '${formatRupiah(harga)} / sesi',
+                      style: const TextStyle(
+                        color: Color(0xFFD8B4FE),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
 
                     const SizedBox(height: 20),
@@ -307,6 +232,7 @@ class _LayananPageState extends State<LayananPage> {
                     const Text(
                       'Jumlah Sesi',
                       style: TextStyle(
+                        color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -316,37 +242,44 @@ class _LayananPageState extends State<LayananPage> {
                     Row(
                       children: [
                         IconButton(
-                          onPressed: () {
-                            if (jumlahSesi > 1) {
-                              setDialogState(() {
-                                jumlahSesi--;
-                              });
-                            }
-                          },
+                          onPressed: jumlahSesi > 1
+                              ? () {
+                                  setDialogState(() {
+                                    jumlahSesi--;
+                                  });
+                                }
+                              : null,
                           icon: const Icon(
                             Icons.remove_circle_outline,
                           ),
+                          color: const Color(0xFFD8B4FE),
                         ),
 
-                        Text(
-                          '$jumlahSesi',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                        Container(
+                          width: 45,
+                          alignment: Alignment.center,
+                          child: Text(
+                            '$jumlahSesi',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
 
                         IconButton(
-                          onPressed: () {
-                            if (jumlahSesi < 10) {
-                              setDialogState(() {
-                                jumlahSesi++;
-                              });
-                            }
-                          },
+                          onPressed: jumlahSesi < 10
+                              ? () {
+                                  setDialogState(() {
+                                    jumlahSesi++;
+                                  });
+                                }
+                              : null,
                           icon: const Icon(
                             Icons.add_circle_outline,
                           ),
+                          color: const Color(0xFFD8B4FE),
                         ),
                       ],
                     ),
@@ -355,14 +288,67 @@ class _LayananPageState extends State<LayananPage> {
 
                     TextField(
                       controller: voucherController,
+                      style: const TextStyle(
+                        color: Colors.white,
+                      ),
+                      cursorColor: Colors.white,
                       onChanged: (value) {
-                        setDialogState(() {});
+                        setDialogState(() {
+                          voucherCodeUsed = null;
+                          discountPercent = 0;
+                          discountAmount = 0;
+                        });
                       },
                       decoration: const InputDecoration(
                         labelText: 'Kode Voucher',
-                        hintText: 'Opsional',
+                        hintText: 'Contoh: arcanova15',
+                        prefixIcon: Icon(
+                          Icons.discount_outlined,
+                        ),
                       ),
                     ),
+
+                    const SizedBox(height: 10),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed:
+                            isCheckingVoucher ? null : cekVoucher,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor:
+                              const Color(0xFFD8B4FE),
+                          side: const BorderSide(
+                            color: Color(0xFFA78BFA),
+                          ),
+                        ),
+                        child: isCheckingVoucher
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child:
+                                    CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFD8B4FE),
+                                ),
+                              )
+                            : const Text(
+                                'Gunakan Voucher',
+                              ),
+                      ),
+                    ),
+
+                    if (voucherCodeUsed != null) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        'Voucher "$voucherCodeUsed" '
+                        'berhasil digunakan ($discountPercent%).',
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 20),
 
@@ -373,6 +359,9 @@ class _LayananPageState extends State<LayananPage> {
                         color: const Color(0xFF2E1065),
                         borderRadius:
                             BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white12,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment:
@@ -380,31 +369,41 @@ class _LayananPageState extends State<LayananPage> {
                         children: [
                           Text(
                             'Jumlah Sesi: $jumlahSesi',
+                            style: const TextStyle(
+                              color: Colors.white,
+                            ),
                           ),
 
                           const SizedBox(height: 5),
 
                           Text(
                             'Subtotal: ${formatRupiah(subtotal)}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                            ),
                           ),
 
-                          if (diskon > 0) ...[
+                          if (discountAmount > 0) ...[
                             const SizedBox(height: 5),
+
                             Text(
-                              'Diskon: -${formatRupiah(diskon)}',
+                              'Diskon: -${formatRupiah(discountAmount)}',
                               style: const TextStyle(
                                 color: Colors.greenAccent,
                               ),
                             ),
                           ],
 
-                          const Divider(),
+                          const Divider(
+                            color: Colors.white24,
+                          ),
 
                           Text(
                             'Total: ${formatRupiah(total)}',
                             style: const TextStyle(
+                              color: Color(0xFFE9D5FF),
+                              fontSize: 17,
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
                             ),
                           ),
                         ],
@@ -419,42 +418,142 @@ class _LayananPageState extends State<LayananPage> {
                   onPressed: () {
                     Navigator.pop(dialogContext);
                   },
-                  child: const Text('Batal'),
+                  child: const Text(
+                    'Batal',
+                  ),
                 ),
 
                 FilledButton(
-                  onPressed: () {
-                    Navigator.pop(dialogContext);
+                  onPressed: () async {
+                    final currentUserId =
+                        AppData.currentUserId;
 
-                    showDialog(
-                      context: context,
-                      builder: (context) {
-                        return AlertDialog(
-                          title: const Text(
-                            '🎉 Pesanan Berhasil!',
-                          ),
+                    if (currentUserId == null) {
+                      Navigator.pop(dialogContext);
 
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(
+                        const SnackBar(
                           content: Text(
-                            'Pemesanan layanan '
-                            '${layanan.nama} berhasil '
-                            'dikonfirmasi.\n\n'
-                            'Jumlah sesi: $jumlahSesi\n'
-                            'Total: ${formatRupiah(total)}',
+                            'Sesi login sudah berakhir. '
+                            'Silakan login kembali.',
                           ),
+                        ),
+                      );
 
-                          actions: [
-                            FilledButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              child: const Text('Tutup'),
+                      return;
+                    }
+
+                    String? finalVoucherCode;
+
+                    if (voucherController.text
+                        .trim()
+                        .isNotEmpty) {
+                      final code = voucherController.text
+                          .trim()
+                          .toLowerCase();
+
+                      final voucher =
+                          await ArcanovaDB.instance
+                              .getVoucherByCode(code);
+
+                      if (voucher == null) {
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Voucher tidak valid.',
                             ),
-                          ],
+                          ),
                         );
-                      },
-                    );
+
+                        return;
+                      }
+
+                      final int percent =
+                          (voucher['discount_percent']
+                                  as num)
+                              .toInt();
+
+                      discountAmount =
+                          (subtotal * percent / 100).round();
+
+                      finalVoucherCode = code;
+                    }
+
+                    final int finalTotal =
+                        subtotal - discountAmount;
+
+                    final int serviceId =
+                        (layanan['id'] as num).toInt();
+
+                    //simpan ke database
+                    try {
+                      await ArcanovaDB.instance.addBooking(
+                        userId: currentUserId,
+                        serviceId: serviceId,
+                        voucherCode: finalVoucherCode,
+                        quantity: jumlahSesi,
+                        subtotal: subtotal,
+                        discountAmount: discountAmount,
+                        totalPrice: finalTotal,
+                      );
+
+                      if (!context.mounted) return;
+
+                      Navigator.pop(dialogContext);
+
+                      showDialog(
+                        context: context,
+                        builder: (successContext) {
+                          return AlertDialog(
+                            title: const Text(
+                              '🎉 Pesanan Berhasil!',
+                            ),
+
+                            content: Text(
+                              'Pemesanan layanan '
+                              '${layanan['name']} berhasil '
+                              'disimpan.\n\n'
+                              'Jumlah sesi: $jumlahSesi\n'
+                              'Subtotal: '
+                              '${formatRupiah(subtotal)}\n'
+                              '${discountAmount > 0 ? 'Diskon: -${formatRupiah(discountAmount)}\n' : ''}'
+                              'Total: '
+                              '${formatRupiah(finalTotal)}',
+                            ),
+
+                            actions: [
+                              FilledButton(
+                                onPressed: () {
+                                  Navigator.pop(
+                                    successContext,
+                                  );
+                                },
+                                child: const Text(
+                                  'Tutup',
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    } catch (e) {
+                      if (!context.mounted) return;
+
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Gagal menyimpan pesanan: $e',
+                          ),
+                        ),
+                      );
+                    }
                   },
-                  child: const Text('Pesan Sekarang'),
+                  child: const Text(
+                    'Pesan Sekarang',
+                  ),
                 ),
               ],
             );
@@ -464,20 +563,110 @@ class _LayananPageState extends State<LayananPage> {
     );
   }
 
-  // =========================
-  // BUILD
-  // =========================
+
+  Widget serviceCard(Map<String, dynamic> layanan) {
+    final int harga =
+        (layanan['price'] as num).toInt();
+
+    final int durasi =
+        (layanan['duration_minutes'] as num).toInt();
+
+    return Card(
+      color: const Color(0xFF0F172A),
+      elevation: 3,
+      margin: const EdgeInsets.only(bottom: 15),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
+          children: [
+            Text(
+              layanan['name'] ?? 'Layanan Tarot',
+              style: const TextStyle(
+                color: Color(0xFFE9D5FF),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Row(
+              children: [
+                const Icon(
+                  Icons.access_time,
+                  size: 16,
+                  color: Color(0xFFA78BFA),
+                ),
+
+                const SizedBox(width: 5),
+
+                Text(
+                  '$durasi Menit',
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            Text(
+              layanan['description'] ??
+                  'Pembacaan tarot untuk membantu '
+                  'memahami berbagai aspek kehidupan.',
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            Row(
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  formatRupiah(harga),
+                  style: const TextStyle(
+                    color: Color(0xFFD8B4FE),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                FilledButton(
+                  onPressed: () {
+                    pesanLayanan(layanan);
+                  },
+                  child: const Text(
+                    'Pesan',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Layanan Tarot'),
-      ),
-
-      floatingActionButton: FloatingActionButton(
-        onPressed: tambahLayanan,
-        child: const Icon(Icons.add),
+        title: const Text(
+          'Layanan Tarot',
+        ),
       ),
 
       body: Container(
@@ -493,150 +682,35 @@ class _LayananPageState extends State<LayananPage> {
           ),
         ),
 
-        child: AppData.services.isEmpty
+        child: isLoading
             ? const Center(
-                child: Text(
-                  'Belum ada layanan tarot.',
-                  style: TextStyle(
-                    color: Colors.white70,
-                  ),
+                child: CircularProgressIndicator(
+                  color: Color(0xFFD8B4FE),
                 ),
               )
-            : ListView.builder(
-                padding: const EdgeInsets.all(20),
-                itemCount: AppData.services.length,
-                itemBuilder: (context, index) {
-                  final layanan =
-                      AppData.services[index];
-
-                  return Card(
-                    color: const Color(0xFF0F172A),
-                    margin: const EdgeInsets.only(
-                      bottom: 15,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(20),
-                    ),
-
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-
-                        children: [
-                          Row(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  layanan.nama,
-                                  style: const TextStyle(
-                                    color:
-                                        Color(0xFFE9D5FF),
-                                    fontSize: 18,
-                                    fontWeight:
-                                        FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-
-                              PopupMenuButton<String>(
-                                onSelected: (value) {
-                                  if (value == 'edit') {
-                                    editLayanan(index);
-                                  }
-
-                                  if (value == 'hapus') {
-                                    hapusLayanan(index);
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                    value: 'edit',
-                                    child: Text('Edit'),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'hapus',
-                                    child: Text('Hapus'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.access_time,
-                                size: 16,
-                                color: Color(0xFFA78BFA),
-                              ),
-
-                              const SizedBox(width: 5),
-
-                              Text(
-                                '${layanan.durasi} Menit',
-                                style: const TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          Text(
-                            layanan.deskripsi,
-                            style: const TextStyle(
-                              color: Colors.white60,
-                              fontSize: 13,
-                              height: 1.5,
-                            ),
-                          ),
-
-                          const SizedBox(height: 15),
-
-                          Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment
-                                    .spaceBetween,
-                            children: [
-                              Text(
-                                formatRupiah(
-                                  layanan.harga,
-                                ),
-                                style: const TextStyle(
-                                  color:
-                                      Color(0xFFD8B4FE),
-                                  fontSize: 16,
-                                  fontWeight:
-                                      FontWeight.bold,
-                                ),
-                              ),
-
-                              FilledButton(
-                                onPressed: () {
-                                  pesanLayanan(layanan);
-                                },
-                                child: const Text(
-                                  'Pesan',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+            : services.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Belum ada layanan tarot.',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 15,
                       ),
                     ),
-                  );
-                },
-              ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: loadServices,
+                    color: const Color(0xFF7C3AED),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: services.length,
+                      itemBuilder: (context, index) {
+                        return serviceCard(
+                          services[index],
+                        );
+                      },
+                    ),
+                  ),
       ),
     );
   }
