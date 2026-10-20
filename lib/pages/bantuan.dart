@@ -259,48 +259,24 @@ class BantuanPage extends StatelessWidget {
             ),
             child: const Padding(
               padding: EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: const Column(
                 children: [
                   Text(
-                    'Voucher Arcanova',
+                    '"Your Story, Written in the Cards."',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Color(0xFFE9D5FF),
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
-
-                  SizedBox(height: 12),
-
-                  Text(
-                    'arcanova15  →  Diskon 15%',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-
                   SizedBox(height: 8),
-
                   Text(
-                    'arcanova20  →  Diskon 20%',
+                    'Setiap kartu memiliki cerita.',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-
-                  SizedBox(height: 12),
-
-                  Text(
-                    'Masukkan kode voucher saat melakukan '
-                    'pemesanan layanan tarot.',
-
-                    style: TextStyle(
-                      color: Colors.white60,
+                      color: Colors.white54,
                       fontSize: 12,
-                      height: 1.5,
                     ),
                   ),
                 ],

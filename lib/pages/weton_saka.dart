@@ -16,13 +16,14 @@ class _WetonSakaPageState extends State<WetonSakaPage> {
   String hasilSaka = '-';
 
   final List<String> hari = [
-    'Kamis',
     'Jumat',
     'Sabtu',
     'Minggu',
     'Senin',
     'Selasa',
     'Rabu',
+    'Kamis',
+    
   ];
 
   final List<String> pasaran = [
@@ -36,8 +37,8 @@ class _WetonSakaPageState extends State<WetonSakaPage> {
   Future<void> pilihTanggal() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: tanggal ?? DateTime(2006, 2, 17),
-      firstDate: DateTime(1900),
+      initialDate: tanggal ?? DateTime.now(),
+      firstDate: DateTime(1700),
       lastDate: DateTime(2100),
       builder: (context, child) {
         return Theme(
@@ -75,7 +76,7 @@ class _WetonSakaPageState extends State<WetonSakaPage> {
     }
 
     //tanggal acuan
-    final DateTime tanggalAcuan = DateTime(1970, 1, 1);
+    final DateTime tanggalAcuan = DateTime(1700, 1, 1);
 
     // Hitung berapa hari jaraknya dari tanggal acuan
     final int selisihHari =
@@ -84,7 +85,7 @@ class _WetonSakaPageState extends State<WetonSakaPage> {
     //hitung hari
     int indexHari = selisihHari % 7;
 
-    // Untuk tanggal sebelum 1 Januari 1970
+    // Untuk tanggal sebelum 1 Januari 1700
     if (indexHari < 0) {
       indexHari += 7;
     }
@@ -94,7 +95,7 @@ class _WetonSakaPageState extends State<WetonSakaPage> {
     //hitung pasaran
     int indexPasaran = selisihHari % 5;
 
-    // Untuk tanggal sebelum 1 Januari 1970
+    // Untuk tanggal sebelum 1 Januari 1700
     if (indexPasaran < 0) {
       indexPasaran += 5;
     }
@@ -597,8 +598,8 @@ class _WetonSakaPageState extends State<WetonSakaPage> {
                   Expanded(
                     child: Text(
                       'Acuan perhitungan: '
-                      '1 Januari 1970 = Kamis Wage. '
-                      'Urutan hari dimulai dari Kamis '
+                      '1 Januari 1700 = Jumat Wage. '
+                      'Urutan hari dimulai dari Jumat '
                       'dan urutan pasaran dimulai dari Wage.',
 
                       style: TextStyle(

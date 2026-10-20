@@ -13,7 +13,7 @@ class _StopwatchPageState
     extends State<StopwatchPage> {
   Timer? timer;
 
-  int seconds = 0;
+  int seconds = 86399;
   bool berjalan = false;
 
   String get waktu {

@@ -62,7 +62,7 @@ class _HijriahPageState extends State<HijriahPage> {
   Future<void> pilihTanggal() async {
     final picked = await showDatePicker(
       context: context,
-      firstDate: DateTime(1900),
+      firstDate: DateTime(1700),
       lastDate: DateTime.now(),
       initialDate: tanggalLahir ?? DateTime(2000),
       builder: (context, child) {
@@ -112,8 +112,7 @@ class _HijriahPageState extends State<HijriahPage> {
     final int y = tahun + 4800 - a;
     final int m = bulan + (12 * a) - 3;
     final int jd =
-        hari +
-        ((153 * m + 2) ~/ 5) +(365 * y) + (y ~/ 4) - (y ~/ 100) + (y ~/ 400) -32045;
+        hari + ((153 * m + 2) ~/ 5) +(365 * y) + (y ~/ 4) - (y ~/ 100) + (y ~/ 400) -32045;
 
     int l = jd - 1948440 + 10632;
 
