@@ -1,0 +1,204 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/user_model.dart';
+import 'db_helper.dart';
+
+class AuthService {
+  static final AuthService instance = AuthService._init();
+  AuthService._init();
+
+  static const String _salt = "ARCANOVA_COSMIC_SALT_9999_MYSTIC";
+  static const String _prefUserIdKey = "arcanova_session_user_id";
+  static const String _prefTokenKey = "arcanova_session_token";
+  static const String _prefLastUsernameKey = "arcanova_last_username";
+
+  UserModel? _currentUser;
+  UserModel? get currentUser => _currentUser;
+  bool get isAuthenticated => _currentUser != null;
+
+  // Hashing password with SHA-256 + Salt
+  String hashPassword(String password) {
+    final salted = '$password:$_salt';
+    final bytes = utf8.encode(salted);
+    return sha256.convert(bytes).toString();
+  }
+
+  String _generateToken(String identifier) {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final raw = '$identifier:$timestamp:$_salt';
+    return sha256.convert(utf8.encode(raw)).toString();
+  }
+
+  // Register user
+  Future<Map<String, dynamic>> register({
+    required String username,
+    required String email,
+    required String password,
+    required String birthDate,
+    required String timezonePref,
+    String avatarGender = 'male',
+  }) async {
+    try {
+      final existingUser = await DatabaseHelper.instance.getUserByUsernameOrEmail(username);
+      if (existingUser != null) {
+        return {'success': false, 'message': 'Username ini sudah dipakai. Coba username lain ya!'};
+      }
+
+      final existingEmail = await DatabaseHelper.instance.getUserByUsernameOrEmail(email);
+      if (existingEmail != null) {
+        return {'success': false, 'message': 'Email ini sudah terdaftar. Silakan langsung login ya!'};
+      }
+
+      final hashedPassword = hashPassword(password);
+      final newUser = UserModel(
+        username: username.trim(),
+        email: email.trim().toLowerCase(),
+        passwordHash: hashedPassword,
+        birthDate: birthDate,
+        timezonePref: timezonePref,
+        avatarGender: avatarGender,
+        biometricEnabled: true,
+      );
+
+      final id = await DatabaseHelper.instance.insertUser(newUser);
+      _currentUser = newUser.copyWith(id: id);
+
+      // Save user ID & username to prefs for quick fingerprint login
+      await _saveSession(id, _generateToken(username));
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefLastUsernameKey, username.trim());
+
+      return {'success': true, 'user': _currentUser};
+    } catch (e) {
+      return {'success': false, 'message': 'Oops, gagal daftar: $e'};
+    }
+  }
+
+  // Login with Username or Email
+  Future<Map<String, dynamic>> login({
+    required String usernameOrEmail,
+    required String password,
+  }) async {
+    try {
+      final user = await DatabaseHelper.instance.getUserByUsernameOrEmail(usernameOrEmail);
+      if (user == null) {
+        return {'success': false, 'message': 'Akun dengan username/email ini tidak ditemukan.'};
+      }
+
+      final inputHash = hashPassword(password);
+      if (user.passwordHash != inputHash) {
+        return {'success': false, 'message': 'Kata sandi belum tepat. Cek lagi ya!'};
+      }
+
+      _currentUser = user;
+      await _saveSession(user.id!, _generateToken(user.username));
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefLastUsernameKey, user.username);
+
+      return {'success': true, 'user': _currentUser};
+    } catch (e) {
+      return {'success': false, 'message': 'Oops, gagal masuk: $e'};
+    }
+  }
+
+  // Biometric Direct Login
+  Future<bool> loginWithBiometrics(int userId) async {
+    try {
+      final user = await DatabaseHelper.instance.getUserById(userId);
+      if (user != null) {
+        _currentUser = user;
+        await _saveSession(user.id!, _generateToken(user.username));
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Quick switch back to Guest Mode
+  void enterGuestMode() {
+    _currentUser = null;
+  }
+
+  // Save Session
+  Future<void> _saveSession(int userId, String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_prefUserIdKey, userId);
+    await prefs.setString(_prefTokenKey, token);
+  }
+
+  // Get Last Registered or Logged In User Id
+  Future<int?> getLastSessionUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_prefUserIdKey);
+  }
+
+  Future<String?> getLastUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_prefLastUsernameKey);
+  }
+
+  // Update Full User Profile (Username, Email, Password, Avatar Gender)
+  Future<bool> updateFullProfile({
+    required String username,
+    required String email,
+    String? newPassword,
+    required String avatarGender,
+    String? birthDate,
+  }) async {
+    if (_currentUser == null || _currentUser!.id == null) return false;
+
+    String passwordHash = _currentUser!.passwordHash;
+    if (newPassword != null && newPassword.trim().isNotEmpty) {
+      passwordHash = hashPassword(newPassword.trim());
+    }
+
+    final updated = _currentUser!.copyWith(
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
+      passwordHash: passwordHash,
+      avatarGender: avatarGender,
+      birthDate: birthDate ?? _currentUser!.birthDate,
+    );
+
+    final rows = await DatabaseHelper.instance.updateUser(updated);
+    if (rows > 0) {
+      _currentUser = updated;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefLastUsernameKey, username.trim());
+      return true;
+    }
+    return false;
+  }
+
+  // Delete User Account
+  Future<bool> deleteAccount() async {
+    if (_currentUser == null || _currentUser!.id == null) return false;
+    final rows = await DatabaseHelper.instance.deleteUser(_currentUser!.id!);
+    if (rows > 0) {
+      await logout();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefUserIdKey);
+      await prefs.remove(_prefLastUsernameKey);
+      return true;
+    }
+    return false;
+  }
+
+  // Update Biometric Setting
+  Future<void> toggleBiometric(bool enabled) async {
+    if (_currentUser?.id != null) {
+      await DatabaseHelper.instance.updateUserBiometric(_currentUser!.id!, enabled);
+      _currentUser = _currentUser!.copyWith(biometricEnabled: enabled);
+    }
+  }
+
+  // Logout
+  Future<void> logout() async {
+    _currentUser = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefTokenKey);
+  }
+}
