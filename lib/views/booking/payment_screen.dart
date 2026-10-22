@@ -51,33 +51,48 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<void> _handleUpdatePaymentStatus() async {
     setState(() => _isUpdating = true);
 
-    // Save/Update booking in SQLite as CONFIRMED
-    final confirmedBooking = widget.booking.copyWith(paymentStatus: 'CONFIRMED');
-    await DatabaseHelper.instance.insertBooking(confirmedBooking);
+    try {
+      // 1. Save / Update booking to database as CONFIRMED
+      final confirmedBooking = widget.booking.copyWith(paymentStatus: 'CONFIRMED');
+      await DatabaseHelper.instance.insertBooking(confirmedBooking);
 
-    await Future.delayed(const Duration(milliseconds: 700));
+      await Future.delayed(const Duration(milliseconds: 600));
 
-    if (!mounted) return;
-    setState(() => _isUpdating = false);
+      if (!mounted) return;
+      setState(() => _isUpdating = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        backgroundColor: AppColors.successEmerald,
-        content: Text("✨ Hore! Pembayaran berhasil dikonfirmasi. Sesi kamu sudah siap."),
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.successEmerald,
+          content: Text("✨ Hore! Pembayaran berhasil dikonfirmasi. Sesi kamu sudah terjadwal."),
+        ),
+      );
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SessionWaitingScreen(booking: confirmedBooking),
-      ),
-    );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SessionWaitingScreen(booking: confirmedBooking),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isUpdating = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.errorCrimson,
+          content: Text("Gagal perbarui pembayaran: $e"),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final zoneTimes = TimezoneService.instance.getAllZoneTimes(widget.booking.sessionTimeWib);
+    // Only display the specific booked time in user's chosen timezone (clean & no WIT!)
+    final formattedUserTime = TimezoneService.instance.formatForUserTimezone(
+      widget.booking.sessionTimeWib,
+      widget.booking.userTimezone,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
@@ -215,7 +230,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Booking Details
+              // Booking Details / Nota
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
@@ -229,10 +244,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     _buildRowDetail("Layanan", widget.booking.serviceTitle),
                     _buildRowDetail("Sesi", "${widget.booking.sessionsCount} Sesi (${widget.booking.durationMinutes} mnt/sesi)"),
                     _buildRowDetail("Tanggal", widget.booking.sessionDate),
-                    _buildRowDetail("Jam Sesi (WIB)", "${widget.booking.sessionTimeWib} WIB"),
-                    _buildRowDetail("🇬🇧 London", zoneTimes['London']!),
+                    // Only show the specific booked time in user's timezone!
+                    _buildRowDetail("Jam Sesi", formattedUserTime),
                     _buildRowDetail("Pengingat", "${widget.booking.reminderMinutes} Menit Sebelum"),
-                    const Divider(color: Colors.white12, height: 20),
+                    const Divider(color: Colors.white10, height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -253,9 +268,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 icon: _isUpdating
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                     : const Icon(Icons.check_circle_outline),
-                label: const Text(
-                  "Perbarui Status Pembayaran",
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                label: Text(
+                  _isUpdating ? "Memproses..." : "Perbarui Status Pembayaran",
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.neonPurple,

@@ -220,7 +220,10 @@ class _MysticHubScreenState extends State<MysticHubScreen> with SingleTickerProv
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.cardSurfaceLight,
-                          border: Border.all(color: AppColors.celestialCyan, width: 2),
+                          border: Border.all(
+                            color: _p1Gender == "Pria" ? AppColors.celestialCyan : Colors.pinkAccent,
+                            width: 2.5,
+                          ),
                         ),
                         child: Center(
                           child: Text(_p1Gender == "Pria" ? "👨" : "👩", style: const TextStyle(fontSize: 32)),
@@ -254,7 +257,10 @@ class _MysticHubScreenState extends State<MysticHubScreen> with SingleTickerProv
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.cardSurfaceLight,
-                          border: Border.all(color: Colors.pinkAccent, width: 2),
+                          border: Border.all(
+                            color: _p2Gender == "Pria" ? AppColors.celestialCyan : Colors.pinkAccent,
+                            width: 2.5,
+                          ),
                         ),
                         child: Center(
                           child: Text(_p2Gender == "Pria" ? "👨" : "👩", style: const TextStyle(fontSize: 32)),
@@ -317,7 +323,8 @@ class _MysticHubScreenState extends State<MysticHubScreen> with SingleTickerProv
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: _p1Gender == "Pria" ? AppColors.neonPurple : AppColors.cardSurfaceLight,
+                                color: _p1Gender == "Pria" ? AppColors.celestialCyan.withValues(alpha: 0.3) : AppColors.cardSurfaceLight,
+                                border: Border.all(color: _p1Gender == "Pria" ? AppColors.celestialCyan : Colors.transparent, width: 1.5),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Center(child: Text("👨 Pria", style: TextStyle(fontSize: 12, color: Colors.white))),
@@ -331,7 +338,8 @@ class _MysticHubScreenState extends State<MysticHubScreen> with SingleTickerProv
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: _p1Gender == "Wanita" ? AppColors.neonPurple : AppColors.cardSurfaceLight,
+                                color: _p1Gender == "Wanita" ? Colors.pinkAccent.withValues(alpha: 0.3) : AppColors.cardSurfaceLight,
+                                border: Border.all(color: _p1Gender == "Wanita" ? Colors.pinkAccent : Colors.transparent, width: 1.5),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Center(child: Text("👩 Wanita", style: TextStyle(fontSize: 12, color: Colors.white))),
@@ -387,7 +395,8 @@ class _MysticHubScreenState extends State<MysticHubScreen> with SingleTickerProv
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: _p2Gender == "Pria" ? AppColors.neonPurple : AppColors.cardSurfaceLight,
+                                color: _p2Gender == "Pria" ? AppColors.celestialCyan.withValues(alpha: 0.3) : AppColors.cardSurfaceLight,
+                                border: Border.all(color: _p2Gender == "Pria" ? AppColors.celestialCyan : Colors.transparent, width: 1.5),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Center(child: Text("👨 Pria", style: TextStyle(fontSize: 12, color: Colors.white))),
@@ -401,7 +410,8 @@ class _MysticHubScreenState extends State<MysticHubScreen> with SingleTickerProv
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: _p2Gender == "Wanita" ? AppColors.neonPurple : AppColors.cardSurfaceLight,
+                                color: _p2Gender == "Wanita" ? Colors.pinkAccent.withValues(alpha: 0.3) : AppColors.cardSurfaceLight,
+                                border: Border.all(color: _p2Gender == "Wanita" ? Colors.pinkAccent : Colors.transparent, width: 1.5),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Center(child: Text("👩 Wanita", style: TextStyle(fontSize: 12, color: Colors.white))),
@@ -630,7 +640,7 @@ class _MysticHubScreenState extends State<MysticHubScreen> with SingleTickerProv
                   alignment: Alignment.center,
                   children: [
                     Image.network(
-                      "https://images.unsplash.com/photo-1596402184320-417e7178b2cd?auto=format&fit=crop&w=700&q=80",
+                      "https://static-maps.yandex.ru/1.x/?ll=110.3658,-7.7928&z=15&l=map&size=650,300",
                       height: 150,
                       width: double.infinity,
                       fit: BoxFit.cover,

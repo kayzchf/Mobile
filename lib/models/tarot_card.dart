@@ -61,7 +61,7 @@ class TarotCard {
       keywords: (map['keywords'] as String).split(','),
       affirmation: map['affirmation'] as String? ?? '',
       symbol: map['symbol'] as String? ?? '🔮',
-      imagePath: map['image_path'] as String? ?? 'assets/cards/${map['number']}.png',
+      imagePath: map['image_path'] as String? 
     );
   }
 }

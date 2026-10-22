@@ -13,6 +13,20 @@ class DatabaseHelper {
 
   DatabaseHelper._init();
 
+  Future<void> refreshTarotImages() async {
+    final db = await database;
+    if (db == null) return;
+
+    for (final card in TarotDeckData.majorArcanaCards) {
+      await db.update(
+        'tarot_cards',
+        {'image_path': card.imagePath},
+        where: 'id = ?',
+        whereArgs: [card.id],
+      );
+    }
+  }
+  
   Future<Database?> get database async {
     try {
       if (_database != null) return _database!;

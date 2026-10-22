@@ -21,7 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  final List<String> _timezones = ['WIB', 'WITA', 'WIT', 'London (GMT)'];
+  final List<String> _timezones = ['WIB', 'WITA', 'London (GMT)'];
 
   @override
   void dispose() {
@@ -206,7 +206,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 // Wilayah / Timezone
                 DropdownButtonFormField<String>(
-                  value: _selectedTimezone,
+                  initialValue: _selectedTimezone,
                   dropdownColor: AppColors.cardSurface,
                   decoration: const InputDecoration(
                     labelText: "Zona Waktu Domisili Anda",

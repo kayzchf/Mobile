@@ -5,7 +5,6 @@ import 'app_colors.dart';
 class AppTheme {
   static ThemeData get darkTheme {
     return ThemeData(
-      useMaterial3: true,
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.voidBlack,
       primaryColor: AppColors.neonPurple,
@@ -15,57 +14,59 @@ class AppTheme {
         surface: AppColors.cardSurface,
         error: AppColors.errorCrimson,
         onPrimary: Colors.white,
-        onSecondary: Colors.black,
+        onSecondary: AppColors.voidBlack,
         onSurface: AppColors.textPrimary,
+        onError: Colors.white,
       ),
-      textTheme: const TextTheme().copyWith(
-        displayLarge: GoogleFonts.cinzel(
-          color: AppColors.textPrimary,
+      textTheme: TextTheme(
+        displayLarge: GoogleFonts.cinzelDecorative(
           fontSize: 32,
           fontWeight: FontWeight.bold,
+          color: AppColors.arcaneSilver,
           letterSpacing: 1.5,
         ),
-        displayMedium: GoogleFonts.cinzel(
-          color: AppColors.textPrimary,
-          fontSize: 26,
-          fontWeight: FontWeight.w700,
+        displayMedium: GoogleFonts.cinzelDecorative(
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          color: AppColors.arcaneSilver,
           letterSpacing: 1.2,
         ),
         titleLarge: GoogleFonts.cinzel(
-          color: AppColors.arcaneSilver,
           fontSize: 20,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 1.1,
+          fontWeight: FontWeight.bold,
+          color: AppColors.arcaneSilver,
+          letterSpacing: 1.0,
         ),
         titleMedium: GoogleFonts.poppins(
-          color: AppColors.textPrimary,
           fontSize: 16,
           fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
         ),
         bodyLarge: GoogleFonts.poppins(
+          fontSize: 15,
           color: AppColors.textPrimary,
-          fontSize: 14,
+          height: 1.5,
         ),
         bodyMedium: GoogleFonts.poppins(
-          color: AppColors.textSecondary,
           fontSize: 13,
+          color: AppColors.textSecondary,
+          height: 1.4,
         ),
-        labelSmall: GoogleFonts.poppins(
-          color: AppColors.textMuted,
+        bodySmall: GoogleFonts.poppins(
           fontSize: 11,
           letterSpacing: 0.5,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.cardSurface.withOpacity(0.7),
+        fillColor: AppColors.cardSurface.withValues(alpha: 0.7),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: AppColors.mysticViolet.withOpacity(0.3)),
+          borderSide: BorderSide(color: AppColors.mysticViolet.withValues(alpha: 0.3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: AppColors.mysticViolet.withOpacity(0.3)),
+          borderSide: BorderSide(color: AppColors.mysticViolet.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -78,12 +79,12 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       ),
       cardTheme: CardThemeData(
-        color: AppColors.cardSurface.withOpacity(0.85),
+        color: AppColors.cardSurface.withValues(alpha: 0.85),
         elevation: 8,
-        shadowColor: AppColors.mysticViolet.withOpacity(0.3),
+        shadowColor: AppColors.mysticViolet.withValues(alpha: 0.3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: AppColors.mysticViolet.withOpacity(0.25), width: 1),
+          side: BorderSide(color: AppColors.mysticViolet.withValues(alpha: 0.25), width: 1),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -91,7 +92,7 @@ class AppTheme {
           backgroundColor: AppColors.neonPurple,
           foregroundColor: Colors.white,
           elevation: 6,
-          shadowColor: AppColors.neonPurple.withOpacity(0.5),
+          shadowColor: AppColors.neonPurple.withValues(alpha: 0.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -99,7 +100,7 @@ class AppTheme {
           textStyle: GoogleFonts.poppins(
             fontSize: 15,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            letterSpacing: 0.8,
           ),
         ),
       ),

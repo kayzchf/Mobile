@@ -3,6 +3,7 @@ import '../../constants/app_colors.dart';
 import '../../models/booking_model.dart';
 import '../../services/notification_service.dart';
 import '../../services/timezone_service.dart';
+import '../live_chat/reader_chat_screen.dart';
 import '../main_navigation.dart';
 
 class SessionWaitingScreen extends StatefulWidget {
@@ -45,6 +46,10 @@ class _SessionWaitingScreenState extends State<SessionWaitingScreen> {
   @override
   Widget build(BuildContext context) {
     final zoneTimes = TimezoneService.instance.getAllZoneTimes(widget.booking.sessionTimeWib);
+    final userTime = TimezoneService.instance.formatForUserTimezone(
+      widget.booking.sessionTimeWib,
+      widget.booking.userTimezone,
+    );
 
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
@@ -126,15 +131,16 @@ class _SessionWaitingScreenState extends State<SessionWaitingScreen> {
                     const Divider(color: Colors.white10, height: 24),
                     _buildInfoRow("Layanan", widget.booking.serviceTitle),
                     _buildInfoRow("Tanggal", widget.booking.sessionDate),
-                    _buildInfoRow("Jam Sesi (WIB)", "${widget.booking.sessionTimeWib} WIB"),
+                    _buildInfoRow("Waktu Pilihan Kamu", userTime),
+                    _buildInfoRow("WIB (Indonesia Barat)", "${widget.booking.sessionTimeWib} WIB"),
+                    _buildInfoRow("WITA (Indonesia Tengah)", zoneTimes['WITA']!),
                     _buildInfoRow("🇬🇧 London (GMT)", zoneTimes['London']!),
-                    _buildInfoRow("WITA / WIT", "${zoneTimes['WITA']} / ${zoneTimes['WIT']}"),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
 
-              // Clean Notification Announcement (No Test Button!)
+              // Clean Notification Announcement
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
@@ -167,8 +173,28 @@ class _SessionWaitingScreenState extends State<SessionWaitingScreen> {
               ),
               const SizedBox(height: 28),
 
-              // Back to Home Button
+              // 1. Direct WhatsApp Style Chat with Tarot Reader Button
               ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ReaderChatScreen(initialBooking: widget.booking),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.chat_bubble_outline),
+                label: const Text("Mulai Chat dengan Reader (WA Style)"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.neonPurple,
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // 2. Back to Home Button
+              OutlinedButton.icon(
                 onPressed: () {
                   Navigator.pushAndRemoveUntil(
                     context,
@@ -176,11 +202,11 @@ class _SessionWaitingScreenState extends State<SessionWaitingScreen> {
                     (route) => false,
                   );
                 },
-                icon: const Icon(Icons.home),
-                label: const Text("Kembali ke Beranda"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.neonPurple,
-                  minimumSize: const Size.fromHeight(50),
+                icon: const Icon(Icons.home, color: AppColors.shimmerSilver),
+                label: const Text("Kembali ke Beranda", style: TextStyle(color: Colors.white)),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  side: BorderSide(color: AppColors.mysticViolet.withValues(alpha: 0.5)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
               ),

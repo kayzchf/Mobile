@@ -14,10 +14,10 @@ void main() async {
   // Ensure blockchain genesis block is generated
   await BlockchainService.instance.ensureGenesisBlock();
 
-  // Check persisted user session (if any)
-  await AuthService.instance.restoreSession();
+  // Requirement: Every time the app opens, start in Guest Mode by default
+  // Users with accounts can tap the fingerprint button to quickly log in
+  AuthService.instance.enterGuestMode();
 
-  // Open directly to dashboard (Guest by default if not logged in)
   runApp(const ArcanovaApp());
 }
 

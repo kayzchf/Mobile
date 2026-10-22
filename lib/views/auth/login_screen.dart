@@ -84,6 +84,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleFingerprintLogin() async {
     // 1. Check if an account is registered
+    await _loadRememberedAccount();
+    if (!mounted) return;
     if (_rememberedUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -116,6 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
 
+    if (!mounted) return;
     // Show error or guidance
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

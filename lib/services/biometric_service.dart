@@ -58,4 +58,10 @@ class BiometricService {
       };
     }
   }
+
+  // Biometric verification alias (compatible with all biometric screens)
+  Future<bool> authenticateWithFace() async {
+    final res = await authenticateWithFingerprint();
+    return res['success'] == true;
+  }
 }

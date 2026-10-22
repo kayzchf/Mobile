@@ -3,10 +3,10 @@ import '../../constants/app_colors.dart';
 import '../../models/blockchain_block.dart';
 import '../../services/auth_service.dart';
 import '../../services/blockchain_service.dart';
-import '../../services/currency_service.dart';
 import '../auth/login_screen.dart';
 import '../feedback/course_feedback_screen.dart';
 import '../booking/order_history_screen.dart';
+import '../live_chat/reader_chat_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -25,6 +25,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _loadUserProfile();
     _loadLedger();
+    AuthService.instance.addListener(_onAuthChanged);
+  }
+
+  void _onAuthChanged() {
+    if (mounted) {
+      _loadUserProfile();
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    AuthService.instance.removeListener(_onAuthChanged);
+    super.dispose();
   }
 
   void _loadUserProfile() {
@@ -84,56 +98,170 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = AuthService.instance.currentUser;
     if (user == null) return;
 
-    final nameController = TextEditingController(text: user.username);
+    final usernameController = TextEditingController(text: user.username);
+    final emailController = TextEditingController(text: user.email);
+    final passwordController = TextEditingController();
     final birthDateController = TextEditingController(text: user.birthDate);
+    String selectedGender = user.avatarGender; // 'male' or 'female'
 
     final updated = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.cardSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Edit Profil Kamu", style: TextStyle(color: AppColors.arcaneSilver, fontSize: 17, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: "Username Baru"),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.cardSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Row(
+            children: [
+              Icon(Icons.edit_note, color: AppColors.celestialCyan, size: 24),
+              SizedBox(width: 8),
+              Text("Edit Profil Kamu", style: TextStyle(color: AppColors.arcaneSilver, fontSize: 17, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Pilih Avatar Icon (Cowo / Cewe)
+                const Text("Pilih Ikon Avatar Profil:", style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setDialogState(() => selectedGender = 'male'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: selectedGender == 'male' ? AppColors.neonPurple : AppColors.cardSurfaceLight,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: selectedGender == 'male' ? AppColors.celestialCyan : Colors.transparent,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: const Column(
+                            children: [
+                              Text("👨", style: TextStyle(fontSize: 28)),
+                              SizedBox(height: 4),
+                              Text("Cowo", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setDialogState(() => selectedGender = 'female'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: selectedGender == 'female' ? AppColors.neonPurple : AppColors.cardSurfaceLight,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: selectedGender == 'female' ? Colors.pinkAccent : Colors.transparent,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: const Column(
+                            children: [
+                              Text("👩", style: TextStyle(fontSize: 28)),
+                              SizedBox(height: 4),
+                              Text("Cewe", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Username
+                TextField(
+                  controller: usernameController,
+                  decoration: const InputDecoration(
+                    labelText: "Username",
+                    prefixIcon: Icon(Icons.person, color: AppColors.brightLavender, size: 20),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Email
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                    labelText: "Email",
+                    prefixIcon: Icon(Icons.email_outlined, color: AppColors.celestialCyan, size: 20),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Password Baru
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: "Password Baru (Opsional)",
+                    hintText: "Kosongkan jika tak ingin ganti",
+                    prefixIcon: Icon(Icons.lock_outline, color: AppColors.shimmerSilver, size: 20),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Tanggal Lahir
+                TextField(
+                  controller: birthDateController,
+                  decoration: const InputDecoration(
+                    labelText: "Tanggal Lahir (YYYY-MM-DD)",
+                    prefixIcon: Icon(Icons.cake_outlined, color: AppColors.brightLavender, size: 20),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: birthDateController,
-              decoration: const InputDecoration(labelText: "Tanggal Lahir (YYYY-MM-DD)"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Batal", style: TextStyle(color: AppColors.textMuted)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.neonPurple),
+              child: const Text("Simpan Perubahan"),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text("Batal", style: TextStyle(color: AppColors.textMuted)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.neonPurple),
-            child: const Text("Simpan"),
-          ),
-        ],
       ),
     );
 
-    if (updated == true && nameController.text.trim().isNotEmpty) {
-      await AuthService.instance.updateProfile(
-        username: nameController.text.trim(),
+    if (updated == true && usernameController.text.trim().isNotEmpty && emailController.text.trim().isNotEmpty) {
+      final success = await AuthService.instance.updateFullProfile(
+        username: usernameController.text.trim(),
+        email: emailController.text.trim(),
+        newPassword: passwordController.text.trim().isEmpty ? null : passwordController.text.trim(),
+        avatarGender: selectedGender,
         birthDate: birthDateController.text.trim(),
       );
-      setState(() {});
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: AppColors.successEmerald,
-            content: Text("✨ Profil kamu berhasil diperbarui!"),
-          ),
-        );
+        if (success) {
+          setState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: AppColors.successEmerald,
+              content: Text("✨ Profil kamu berhasil diperbarui!"),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: AppColors.errorCrimson,
+              content: Text("Oops, gagal memperbarui profil. Coba periksa kembali data kamu."),
+            ),
+          );
+        }
       }
     }
   }
@@ -234,7 +362,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           children: [
-            // User Profile Card
+            // User Profile Card with Gender Avatar Icon (Cowo / Cewe)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -248,23 +376,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: Row(
                 children: [
-                  // Photo Avatar
+                  // Photo Avatar with Gender Icon (👨 / 👩)
                   Container(
                     width: 72,
                     height: 72,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.arcaneSilver, width: 2),
+                      color: AppColors.cardSurfaceLight,
+                      border: Border.all(
+                        color: user?.avatarGender == 'female' ? Colors.pinkAccent : AppColors.celestialCyan,
+                        width: 2.5,
+                      ),
                       boxShadow: [
-                        BoxShadow(color: AppColors.neonPurple.withValues(alpha: 0.4), blurRadius: 12),
-                      ],
-                      image: DecorationImage(
-                        image: NetworkImage(
-                          user?.avatarUrl.isNotEmpty == true
-                              ? user!.avatarUrl
-                              : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
+                        BoxShadow(
+                          color: (user?.avatarGender == 'female' ? Colors.pinkAccent : AppColors.celestialCyan).withValues(alpha: 0.3),
+                          blurRadius: 12,
                         ),
-                        fit: BoxFit.cover,
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        user != null ? user.avatarEmoji : "👤",
+                        style: const TextStyle(fontSize: 38),
                       ),
                     ),
                   ),
@@ -303,12 +436,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 18),
 
-            // Settings & Features Section
-            Container(
-              decoration: BoxDecoration(
-                color: AppColors.cardSurface,
+            // Settings & Features Section (NO "MATA UANG AKTIF" TILE - per user request)
+            Material(
+              color: AppColors.cardSurface,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.mysticViolet.withValues(alpha: 0.3)),
+                side: BorderSide(color: AppColors.mysticViolet.withValues(alpha: 0.3)),
               ),
               child: Column(
                 children: [
@@ -327,13 +460,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const Divider(color: Colors.white10, height: 1),
 
-                  // 2. Edit Profil
+                  // Chat Tarot Reader Live (WhatsApp Style)
+                  ListTile(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ReaderChatScreen()),
+                      );
+                    },
+                    leading: const Icon(Icons.chat_bubble_outline, color: AppColors.brightLavender),
+                    title: const Text("Chat Tarot Reader (WA Style)", style: TextStyle(color: Colors.white, fontSize: 14)),
+                    subtitle: const Text("Sesi live 09:00 - 18:00 WIB, jadwal booked & roomchat", style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                    trailing: const Icon(Icons.chevron_right, color: AppColors.brightLavender),
+                  ),
+
+                  // 2. Edit Profil (Username, Email, Password, Avatar Gender)
                   if (user != null) ...[
                     ListTile(
                       onTap: _editProfileDialog,
                       leading: const Icon(Icons.edit_outlined, color: AppColors.brightLavender),
                       title: const Text("Edit Profil", style: TextStyle(color: Colors.white, fontSize: 14)),
-                      subtitle: const Text("Ubah nama pengguna atau tanggal lahir", style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                      subtitle: const Text("Ubah username, email, password, atau icon avatar", style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
                       trailing: const Icon(Icons.chevron_right, color: AppColors.brightLavender),
                     ),
                     const Divider(color: Colors.white10, height: 1),
@@ -355,16 +502,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const Divider(color: Colors.white10, height: 1),
 
-                  // 4. Currency
-                  ListTile(
-                    leading: const Icon(Icons.currency_exchange, color: AppColors.shimmerSilver),
-                    title: const Text("Mata Uang Aktif", style: TextStyle(color: Colors.white, fontSize: 14)),
-                    subtitle: Text("${CurrencyService.instance.currencyCode} (${CurrencyService.instance.currencySymbol})", style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                    trailing: const Icon(Icons.chevron_right, color: AppColors.brightLavender),
-                  ),
-                  const Divider(color: Colors.white10, height: 1),
-
-                  // 5. SARAN DAN KESAN MATKUL PAM (Kriteria Wajib)
+                  // 4. SARAN DAN KESAN MATKUL PAM (Kriteria Wajib Tugas)
                   ListTile(
                     onTap: () {
                       Navigator.push(
@@ -385,7 +523,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 22),
 
-            // BLOCKCHAIN READING LEDGER (Penjelasan Kriteria Wajib Tugas)
+            // BLOCKCHAIN READING LEDGER (Kriteria Wajib Tugas)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(

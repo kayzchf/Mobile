@@ -18,7 +18,7 @@ class _BiometricScanScreenState extends State<BiometricScanScreen>
   late AnimationController _animController;
   late Animation<double> _scanAnimation;
   bool _isAuthenticating = false;
-  String _statusText = "Arahkan wajah Anda ke lingkaran kosmis...";
+  String _statusText = "Sentuh sensor sidik jari perangkat Anda...";
 
   @override
   void initState() {
@@ -28,12 +28,12 @@ class _BiometricScanScreenState extends State<BiometricScanScreen>
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
-    _scanAnimation = Tween<double>(begin: -100.0, end: 100.0).animate(
+    _scanAnimation = Tween<double>(begin: -80.0, end: 80.0).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
     );
 
     // Auto-trigger biometric scan after brief delay for visual experience
-    Future.delayed(const Duration(milliseconds: 600), _startFaceScan);
+    Future.delayed(const Duration(milliseconds: 500), _startFingerprintScan);
   }
 
   @override
@@ -42,24 +42,24 @@ class _BiometricScanScreenState extends State<BiometricScanScreen>
     super.dispose();
   }
 
-  Future<void> _startFaceScan() async {
+  Future<void> _startFingerprintScan() async {
     if (_isAuthenticating) return;
     setState(() {
       _isAuthenticating = true;
-      _statusText = "Memindai frekuensi biometrik wajah...";
+      _statusText = "Memindai sidik jari kosmis...";
     });
 
-    final success = await BiometricService.instance.authenticateWithFace();
+    final res = await BiometricService.instance.authenticateWithFingerprint();
 
     if (!mounted) return;
 
-    if (success) {
+    if (res['success'] == true) {
       final loginSuccess = await AuthService.instance.loginWithBiometrics(widget.userId);
       if (loginSuccess && mounted) {
         setState(() {
-          _statusText = "Aura Wajah Terverifikasi! Membuka Portal...";
+          _statusText = "Sidik Jari Terverifikasi! Membuka Portal...";
         });
-        await Future.delayed(const Duration(milliseconds: 700));
+        await Future.delayed(const Duration(milliseconds: 600));
         if (mounted) {
           Navigator.pushAndRemoveUntil(
             context,
@@ -71,10 +71,12 @@ class _BiometricScanScreenState extends State<BiometricScanScreen>
       }
     }
 
-    setState(() {
-      _isAuthenticating = false;
-      _statusText = "Autentikasi wajah gagal atau dibatalkan. Coba lagi.";
-    });
+    if (mounted) {
+      setState(() {
+        _isAuthenticating = false;
+        _statusText = res['message'] ?? "Autentikasi sidik jari dibatalkan. Coba lagi.";
+      });
+    }
   }
 
   @override
@@ -103,9 +105,9 @@ class _BiometricScanScreenState extends State<BiometricScanScreen>
                     ),
               ),
               const SizedBox(height: 8),
-              Text(
-                "Verifikasi Wajah Jiwa Pemilik",
-                style: Theme.of(context).textTheme.bodyMedium,
+              const Text(
+                "Verifikasi Sensor Sidik Jari Pemilik",
+                style: TextStyle(color: AppColors.shimmerSilver, fontSize: 13),
               ),
               const SizedBox(height: 48),
 
@@ -114,17 +116,17 @@ class _BiometricScanScreenState extends State<BiometricScanScreen>
                 alignment: Alignment.center,
                 children: [
                   Container(
-                    width: 240,
-                    height: 240,
+                    width: 220,
+                    height: 220,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppColors.neonPurple.withOpacity(0.5),
+                        color: AppColors.neonPurple.withValues(alpha: 0.5),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.mysticViolet.withOpacity(0.3),
+                          color: AppColors.mysticViolet.withValues(alpha: 0.3),
                           blurRadius: 30,
                           spreadRadius: 5,
                         ),
@@ -132,18 +134,18 @@ class _BiometricScanScreenState extends State<BiometricScanScreen>
                     ),
                   ),
                   Container(
-                    width: 200,
-                    height: 200,
+                    width: 180,
+                    height: 180,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppColors.celestialCyan.withOpacity(0.7),
+                        color: AppColors.celestialCyan.withValues(alpha: 0.7),
                         width: 1.5,
                       ),
                     ),
                     child: const Icon(
-                      Icons.face_retouching_natural,
-                      size: 90,
+                      Icons.fingerprint,
+                      size: 96,
                       color: AppColors.brightLavender,
                     ),
                   ),
@@ -155,7 +157,7 @@ class _BiometricScanScreenState extends State<BiometricScanScreen>
                       return Transform.translate(
                         offset: Offset(0, _scanAnimation.value),
                         child: Container(
-                          width: 180,
+                          width: 160,
                           height: 3,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
@@ -169,7 +171,7 @@ class _BiometricScanScreenState extends State<BiometricScanScreen>
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.celestialCyan.withOpacity(0.8),
+                                color: AppColors.celestialCyan.withValues(alpha: 0.8),
                                 blurRadius: 10,
                                 spreadRadius: 2,
                               ),
@@ -195,9 +197,9 @@ class _BiometricScanScreenState extends State<BiometricScanScreen>
               const SizedBox(height: 32),
 
               ElevatedButton.icon(
-                onPressed: _isAuthenticating ? null : _startFaceScan,
+                onPressed: _isAuthenticating ? null : _startFingerprintScan,
                 icon: const Icon(Icons.fingerprint),
-                label: const Text("Pindai Ulang"),
+                label: const Text("Pindai Ulang Sidik Jari"),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.cardSurfaceLight,
                   side: const BorderSide(color: AppColors.neonPurple),
@@ -210,4 +212,3 @@ class _BiometricScanScreenState extends State<BiometricScanScreen>
     );
   }
 }
-

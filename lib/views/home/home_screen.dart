@@ -5,6 +5,8 @@ import '../../models/tarot_card.dart';
 import '../../services/db_helper.dart';
 import '../../services/sensor_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/biometric_service.dart';
+import '../auth/login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,7 +15,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   List<TarotCard> _allCards = [];
   List<TarotCard> _filteredCards = [];
   TarotCard? _dailyCard;
@@ -24,21 +26,55 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   double _tiltPitch = 0.0;
   double _tiltRoll = 0.0;
+  bool _isSensorsActive = true;
   late AnimationController _flipController;
+
+  String? _rememberedUsername;
+  int? _rememberedUserId;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _flipController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
 
     _loadCards();
-    _initSensors();
+    _checkRememberedAccount();
+    AuthService.instance.addListener(_onAuthChanged);
+    _startSensors();
+  }
+
+  void _onAuthChanged() {
+    _checkRememberedAccount();
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Only use sensors when app is resumed / active!
+    if (state == AppLifecycleState.resumed) {
+      if (_isSensorsActive) _startSensors();
+    } else {
+      _stopSensors();
+    }
+  }
+
+  Future<void> _checkRememberedAccount() async {
+    final username = await AuthService.instance.getLastUsername();
+    final uid = await AuthService.instance.getLastSessionUserId();
+    if (mounted) {
+      setState(() {
+        _rememberedUsername = username;
+        _rememberedUserId = uid;
+      });
+    }
   }
 
   Future<void> _loadCards() async {
+    await DatabaseHelper.instance.refreshTarotImages();
     final cards = await DatabaseHelper.instance.getAllTarotCards();
     if (mounted) {
       setState(() {
@@ -52,11 +88,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  void _initSensors() {
+  void _startSensors() {
     // Accelerometer: Shake to Shuffle
     SensorService.instance.startShakeDetection(
       onShake: () {
-        if (mounted) {
+        if (mounted && _isSensorsActive) {
           _drawNewRandomCard(isShake: true);
         }
       },
@@ -65,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     // Gyroscope: 3D Holographic Parallax Tilt
     SensorService.instance.startGyroscopeTilt(
       onTilt: (pitch, roll) {
-        if (mounted) {
+        if (mounted && _isSensorsActive) {
           setState(() {
             _tiltPitch = pitch;
             _tiltRoll = roll;
@@ -75,9 +111,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
+  void _stopSensors() {
+    SensorService.instance.stopAll();
+  }
+
   @override
   void dispose() {
-    SensorService.instance.stopAll();
+    WidgetsBinding.instance.removeObserver(this);
+    AuthService.instance.removeListener(_onAuthChanged);
+    _stopSensors();
     _flipController.dispose();
     super.dispose();
   }
@@ -107,13 +149,90 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _filterCards() {
+    final query = _searchQuery.trim().toLowerCase();
+    final selectedElement = _selectedElement.toLowerCase();
+
     setState(() {
       _filteredCards = _allCards.where((card) {
-        final matchesQuery = card.name.toLowerCase().contains(_searchQuery.toLowerCase());
-        final matchesElement = _selectedElement == "Semua" || card.element.toLowerCase() == _selectedElement.toLowerCase();
+        final name = card.name.toLowerCase();
+        final matchesQuery =
+            query.isEmpty || name.contains(query);
+
+        final matchesElement =
+            _selectedElement == "Semua" ||
+            card.element.toLowerCase() == selectedElement;
+
         return matchesQuery && matchesElement;
       }).toList();
     });
+  }
+
+  Future<void> _quickFingerprintLogin() async {
+    await _checkRememberedAccount();
+    if (_rememberedUserId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: AppColors.warningOrange,
+            content: Text("Belum ada akun tersimpan di HP ini. Silakan daftar atau masuk dulu ya!"),
+          ),
+        );
+      }
+      if (mounted) Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      return;
+    }
+
+    final res = await BiometricService.instance.authenticateWithFingerprint();
+    if (res['success'] == true) {
+      await AuthService.instance.loginWithBiometrics(_rememberedUserId!);
+      setState(() {});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.successEmerald,
+          content: Text("✨ Sidik jari terverifikasi! Masuk sebagai ${_rememberedUsername ?? 'Sahabat'}."),
+        ),
+      );
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(backgroundColor: AppColors.errorCrimson, content: Text(res['message'] ?? "Sidik jari gagal.")),
+      );
+    }
+  }
+
+  Widget buildTarotImage(
+    TarotCard card, {
+    double? width,
+    double? height,
+    double fallbackFontSize = 30,
+    BoxFit fit = BoxFit.contain,
+  }) {
+    final imagePath = card.imagePath;
+
+    if (imagePath == null || imagePath.isEmpty) {
+      return Center(
+        child: Text(
+          card.symbol,
+          style: TextStyle(fontSize: 60),
+        ),
+      );
+    }
+
+    return Image.asset(
+      imagePath,
+      fit: fit,
+      width: width,
+      height: height,
+      errorBuilder: (context, error, stackTrace) {
+        return Center(
+          child: Text(
+            card.symbol,
+            style: TextStyle(fontSize: 60),
+          ),
+        );
+      },
+    );
   }
 
   void _showCardDetailModal(TarotCard card) {
@@ -141,25 +260,36 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Photo/Image Container with Fallback
+                      // Photo/Image Placeholder for Tarot Card
                       Container(
-                        width: 110,
-                        height: 150,
+                        width: 150,
+                        height: 200,
                         decoration: BoxDecoration(
+                          color: AppColors.cardSurfaceLight,
                           borderRadius: BorderRadius.circular(16),
-                          gradient: AppColors.mysticButton,
-                          border: Border.all(color: AppColors.arcaneSilver.withValues(alpha: 0.5), width: 1.5),
+                          border: Border.all(
+                            color: AppColors.arcaneSilver.withValues(alpha: 0.5),
+                            width: 1.5,
+                          ),
                           boxShadow: [
-                            BoxShadow(color: AppColors.neonPurple.withValues(alpha: 0.4), blurRadius: 15),
+                            BoxShadow(
+                              color: AppColors.neonPurple.withValues(alpha: 0.4),
+                              blurRadius: 15,
+                            ),
                           ],
                         ),
-                        child: Center(
-                          child: Text(card.symbol, style: const TextStyle(fontSize: 54)),
+                        clipBehavior: Clip.antiAlias,
+                        child: buildTarotImage(
+                          card,
+                          width: 150,
+                          height: 200,
+                          fallbackFontSize: 54,
+                          fit: BoxFit.contain,
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        "${card.number}. ${card.name}",
+                        card.name.toUpperCase(),
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontSize: 22,
                               color: AppColors.arcaneSilver,
@@ -172,7 +302,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                       const SizedBox(height: 20),
 
-                      // Afirmasi Santai
                       if (card.affirmation.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.all(16),
@@ -245,50 +374,91 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // Header Bar
+            // Top Bar
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
+                
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user != null ? "Hai, ${user.username} ✨" : "Hai Sahabat! 🌌",
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18, color: AppColors.arcaneSilver),
+                          user != null
+                              ? "Hai, ${user.username} ${user.avatarEmoji}"
+                              : "Hai Sahabat! 🌌",
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontSize: 16,
+                            color: AppColors.arcaneSilver,
+                          ),
                         ),
+                        const SizedBox(height: 4),
                         Text(
-                          user != null ? "Zodiak: ${user.zodiacSign}" : "Mode Tamu • Selamat mengeksplorasi!",
+                          user != null
+                              ? "Zodiak: ${user.zodiacSign}"
+                              : "Mode Tamu • Selamat mengeksplorasi!",
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: user != null ? AppColors.brightLavender : AppColors.shimmerSilver,
-                            fontSize: 12,
+                            color: user != null
+                                ? AppColors.brightLavender
+                                : AppColors.shimmerSilver,
+                            fontSize: 11,
                           ),
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.cardSurfaceLight,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.celestialCyan.withValues(alpha: 0.4)),
+                  ),
+                  if (user == null) ...[
+                    const SizedBox(width: 6),
+                    InkWell(
+                      onTap: _quickFingerprintLogin,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardSurfaceLight,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.celestialCyan,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.fingerprint,
+                          size: 20,
+                          color: AppColors.celestialCyan,
+                        ),
                       ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.vibration, size: 14, color: AppColors.celestialCyan),
-                          SizedBox(width: 4),
-                          Text("Shake / Gyro Aktif", style: TextStyle(color: AppColors.celestialCyan, fontSize: 11)),
-                        ],
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const LoginScreen(),
+                        ),
+                      ),
+                      child: const Text(
+                        "Masuk",
+                        style: TextStyle(
+                          color: AppColors.arcaneSilver,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ],
-                ),
+                ],
+              ),
               ),
             ),
 
-            // Daily Card (Shake to Shuffle + Gyroscope 3D Tilt)
+            // Daily Card (Only page with active sensor!)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -307,10 +477,32 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             letterSpacing: 1.2,
                           ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.refresh, color: AppColors.brightLavender, size: 20),
-                          tooltip: "Kocok Kartu Baru",
-                          onPressed: () => _drawNewRandomCard(isShake: false),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                _isSensorsActive ? Icons.sensors : Icons.sensors_off,
+                                color: _isSensorsActive ? AppColors.celestialCyan : AppColors.textMuted,
+                                size: 18,
+                              ),
+                              tooltip: _isSensorsActive ? "Sensor Aktif" : "Sensor Mati",
+                              onPressed: () {
+                                setState(() {
+                                  _isSensorsActive = !_isSensorsActive;
+                                  if (_isSensorsActive) {
+                                    _startSensors();
+                                  } else {
+                                    _stopSensors();
+                                  }
+                                });
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.refresh, color: AppColors.brightLavender, size: 20),
+                              tooltip: "Kocok Kartu Baru",
+                              onPressed: () => _drawNewRandomCard(isShake: false),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -360,33 +552,47 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 : Column(
                                     children: [
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            "#${_dailyCard!.number} ${_dailyCard!.name}",
-                                            style: const TextStyle(
-                                              color: AppColors.arcaneSilver,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
+                                          Expanded(
+                                            child: Text(
+                                              _dailyCard!.name.toUpperCase(),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                color: AppColors.arcaneSilver,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
+                                          const SizedBox(width: 8),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 4,
+                                            ),
                                             decoration: BoxDecoration(
                                               color: AppColors.neonPurple.withValues(alpha: 0.3),
                                               borderRadius: BorderRadius.circular(12),
                                             ),
                                             child: Text(
                                               _dailyCard!.element,
-                                              style: const TextStyle(color: AppColors.celestialCyan, fontSize: 11),
+                                              style: const TextStyle(
+                                                color: AppColors.celestialCyan,
+                                                fontSize: 11,
+                                              ),
                                             ),
                                           ),
                                         ],
                                       ),
                                       const SizedBox(height: 16),
-                                      Text(
-                                        _dailyCard!.symbol,
-                                        style: const TextStyle(fontSize: 60),
+                                      SizedBox(
+                                        width: 180,
+                                        height: 230,
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: buildTarotImage(_dailyCard!),
+                                        ),
                                       ),
                                       const SizedBox(height: 12),
                                       Text(
@@ -446,7 +652,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         _filterCards();
                       },
                       decoration: InputDecoration(
-                        hintText: "Cari nama kartu (misal: The Fool, The Lovers)...",
+                        hintText: "Cari nama kartu (The Fool, The Lovers)...",
                         hintStyle: const TextStyle(color: AppColors.mutedSilver, fontSize: 13),
                         prefixIcon: const Icon(Icons.search, color: AppColors.shimmerSilver),
                         fillColor: AppColors.cardSurfaceLight.withValues(alpha: 0.6),
@@ -491,7 +697,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
-            // Grid of Tarot Cards: ONLY Name & Symbol (NO Raw Array list!)
+            // Grid of Tarot Cards (Name & Symbol ONLY, clean!)
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
               sliver: _filteredCards.isEmpty
@@ -508,7 +714,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         crossAxisCount: 2,
                         crossAxisSpacing: 14,
                         mainAxisSpacing: 14,
-                        childAspectRatio: 0.95, // Clean square-like card
+                        childAspectRatio: 0.85,
                       ),
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
@@ -516,7 +722,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           return GestureDetector(
                             onTap: () => _showCardDetailModal(card),
                             child: Container(
-                              padding: const EdgeInsets.all(14),
+                              padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
                                 color: AppColors.cardSurface.withValues(alpha: 0.9),
                                 borderRadius: BorderRadius.circular(20),
@@ -532,23 +738,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  // Card Photo / Symbol Placeholder
                                   Container(
-                                    width: 58,
-                                    height: 58,
+                                    width: 90,
+                                    height: 105,
                                     decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
                                       color: AppColors.cardSurfaceLight,
-                                      border: Border.all(color: AppColors.shimmerSilver.withValues(alpha: 0.3)),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppColors.mysticViolet.withValues(alpha: 0.6),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppColors.neonPurple.withValues(alpha: 0.15),
+                                          blurRadius: 8,
+                                        ),
+                                      ],
                                     ),
-                                    child: Center(
-                                      child: Text(card.symbol, style: const TextStyle(fontSize: 30)),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: buildTarotImage(
+                                      card,
+                                      width: 90,
+                                      height: 105,
+                                      fallbackFontSize: 30,
+                                      fit: BoxFit.contain,
                                     ),
                                   ),
                                   const SizedBox(height: 12),
-                                  // Clean Name Only (No raw arrays!)
                                   Text(
-                                    "${card.number}. ${card.name}",
+                                    card.name.toUpperCase(),
                                     textAlign: TextAlign.center,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,

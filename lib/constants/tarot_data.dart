@@ -15,6 +15,7 @@ class TarotDeckData {
       keywords: ["Spontanitas", "Awal Baru", "Kepolosan", "Petualangan"],
       affirmation: "Aku berani melangkah ke dalam babak baru kehidupanku dengan keyakinan penuh.",
       symbol: "🎭",
+      imagePath: 'assets/cards/thefool.jpeg'
     ),
     TarotCard(
       id: 1,
@@ -29,6 +30,7 @@ class TarotDeckData {
       keywords: ["Manifestasi", "Kekuatan", "Keahlian", "Daya Cipta"],
       affirmation: "Aku memiliki kekuatan untuk mewujudkan visi dan cita-citaku menjadi kenyataan.",
       symbol: "🪄",
+      imagePath: 'assets/cards/themagician.jpeg'
     ),
     TarotCard(
       id: 2,
@@ -43,6 +45,7 @@ class TarotDeckData {
       keywords: ["Intuisi", "Misteri", "Kebijaksanaan", "Kedalaman"],
       affirmation: "Suara batinku adalah pemandu yang setia membimbing langkahku.",
       symbol: "🌙",
+      imagePath: 'assets/cards/thehighpriestess.jpeg'
     ),
     TarotCard(
       id: 3,
@@ -57,6 +60,7 @@ class TarotDeckData {
       keywords: ["Kelimpahan", "Kasih Sayang", "Kreativitas", "Kehangatan"],
       affirmation: "Kelimpahan dan keindahan semesta senantiasa mengalir ke dalam hidupku.",
       symbol: "👑",
+      imagePath: 'assets/cards/theempress.jpeg'
     ),
     TarotCard(
       id: 4,
@@ -71,6 +75,7 @@ class TarotDeckData {
       keywords: ["Struktur", "Otoritas", "Disiplin", "Kestabilan"],
       affirmation: "Aku memegang kendali atas jalan hidupku dengan ketegasan dan kebijaksanaan.",
       symbol: "🏛️",
+      imagePath: 'assets/cards/theemperor.jpeg'
     ),
     TarotCard(
       id: 5,
@@ -85,6 +90,7 @@ class TarotDeckData {
       keywords: ["Tradisi", "Mentor", "Etika", "Komitmen Spiritual"],
       affirmation: "Aku menghormati kebijaksanaan nilai luhur yang memperkaya jiwaku.",
       symbol: "📜",
+      imagePath: 'assets/cards/thehierophant.jpeg'
     ),
     TarotCard(
       id: 6,
@@ -99,6 +105,7 @@ class TarotDeckData {
       keywords: ["Cinta Sejati", "Pilihan Hati", "Kemitraan", "Harmoni"],
       affirmation: "Hatiku memilih cinta yang membawa kedamaian, penghargaan, dan kesucian.",
       symbol: "💖",
+      imagePath: 'assets/cards/TheLovers.jpg'
     ),
     TarotCard(
       id: 7,
@@ -113,6 +120,7 @@ class TarotDeckData {
       keywords: ["Tekad Baja", "Kemenangan", "Fokus", "Ketekunan"],
       affirmation: "Dengan tekad dan disiplin yang tak tergoyahkan, aku melaju meraih kemenangan.",
       symbol: "⚔️",
+      imagePath: 'assets/cards/thechariot.jpeg'
     ),
     TarotCard(
       id: 8,
@@ -127,6 +135,7 @@ class TarotDeckData {
       keywords: ["Keberanian", "Kesabaran", "Welas Asih", "Daya Tahan"],
       affirmation: "Kekuatan sejati lahir dari kelembutan hati dan ketenangan jiwaku.",
       symbol: "🦁",
+      imagePath: 'assets/cards/thestrength.jpeg'
     ),
     TarotCard(
       id: 9,
@@ -141,6 +150,7 @@ class TarotDeckData {
       keywords: ["Introspeksi", "Pencerahan", "Kebijaksanaan", "Kesendirian Positif"],
       affirmation: "Dalam ketenangan batinku, aku menemukan jawaban dan cahaya kebenaran.",
       symbol: "🏮",
+      imagePath: 'assets/cards/thehermit.jpeg'
     ),
     TarotCard(
       id: 10,
@@ -155,6 +165,7 @@ class TarotDeckData {
       keywords: ["Takdir", "Keberuntungan", "Karma Baik", "Siklus Semesta"],
       affirmation: "Roda nasib berputar membawa berkah dan kemudahan dalam setiap langkahku.",
       symbol: "🎡",
+      imagePath: 'assets/cards/wheeloffortune.jpeg'
     ),
     TarotCard(
       id: 11,
@@ -169,6 +180,7 @@ class TarotDeckData {
       keywords: ["Keadilan", "Kejujuran", "Keseimbangan", "Kebenaran"],
       affirmation: "Aku selalu bertindak dengan integritas dan kejujuran yang murni.",
       symbol: "⚖️",
+      imagePath: 'assets/cards/justice.jpeg'
     ),
     TarotCard(
       id: 12,
@@ -183,6 +195,7 @@ class TarotDeckData {
       keywords: ["Sudut Pandang Baru", "Jeda", "Penyerahan Ego", "Pencerahan"],
       affirmation: "Aku merelakan egoku demi pemahaman batin yang lebih luas dan bijak.",
       symbol: "⏳",
+      imagePath: 'assets/cards/thehangedman.jpeg'
     ),
     TarotCard(
       id: 13,
@@ -197,6 +210,7 @@ class TarotDeckData {
       keywords: ["Transformasi", "Akhir Siklus", "Kelahiran Kembali", "Pembaruan"],
       affirmation: "Aku melepaskan masa lalu dengan rasa syukur dan menyambut pembaharuan hidup.",
       symbol: "🦋",
+      imagePath: 'assets/cards/death.jpeg'
     ),
     TarotCard(
       id: 14,
@@ -211,6 +225,7 @@ class TarotDeckData {
       keywords: ["Keseimbangan", "Harmoni", "Penyembuhan", "Moderasi"],
       affirmation: "Kedamaian dan harmoni semesta senantiasa mengalir di dalam batinku.",
       symbol: "🕊️",
+      imagePath: 'assets/cards/temperance.jpeg'
     ),
     TarotCard(
       id: 15,
@@ -225,6 +240,7 @@ class TarotDeckData {
       keywords: ["Keterikatan", "Peringatan", "Ilusi", "Pembebasan Diri"],
       affirmation: "Aku memiliki kekuatan penuh untuk membebaskan diriku dari segala belenggu semu.",
       symbol: "⛓️",
+      imagePath: 'assets/cards/thedevil.jpeg'
     ),
     TarotCard(
       id: 16,
@@ -239,6 +255,7 @@ class TarotDeckData {
       keywords: ["Guncangan Kebenaran", "Pembebasan", "Perubahan Radikal", "Fondasi Baru"],
       affirmation: "Runtuhnya kepalsuan membuka jalan bagi berdirinya kebenaran sejati dalam hidupku.",
       symbol: "⚡",
+      imagePath: 'assets/cards/thetower.jpeg'
     ),
     TarotCard(
       id: 17,
@@ -253,6 +270,7 @@ class TarotDeckData {
       keywords: ["Harapan", "Inspirasi", "Kedamaian", "Kesembuhan Batin"],
       affirmation: "Cahaya bintang harapanku bersinar abadi membimbing jalanku.",
       symbol: "⭐",
+      imagePath: 'assets/cards/thestar.jpeg'
     ),
     TarotCard(
       id: 18,
@@ -267,6 +285,7 @@ class TarotDeckData {
       keywords: ["Intuisi", "Ilusi", "Bawah Sadar", "Kejelasan Batin"],
       affirmation: "Aku mempercayai intuisiku untuk menerangi jalan di tengah ketidakpastian.",
       symbol: "🌕",
+      imagePath: 'assets/cards/themoon.jpeg'
     ),
     TarotCard(
       id: 19,
@@ -281,6 +300,7 @@ class TarotDeckData {
       keywords: ["Sukacita", "Keberhasilan", "Vitalitas", "Cahaya Kejayaan"],
       affirmation: "Cahaya kebahagiaan dan kesuksesan bersinar terang dalam setiap tarikan nafasku.",
       symbol: "☀️",
+      imagePath: 'assets/cards/thesun.jpeg'
     ),
     TarotCard(
       id: 20,
@@ -295,6 +315,7 @@ class TarotDeckData {
       keywords: ["Kebangkitan Jiwa", "Panggilan Hidup", "Pengampunan", "Kesadaran"],
       affirmation: "Aku mendengar panggilan jiwaku dan melangkah maju dengan kesadaran baru.",
       symbol: "🎺",
+      imagePath: 'assets/cards/judgement.jpeg'
     ),
     TarotCard(
       id: 21,
@@ -309,6 +330,7 @@ class TarotDeckData {
       keywords: ["Penyelesaian", "Kepuasan Utuh", "Kelulusan", "Harmoni Semesta"],
       affirmation: "Aku merayakan pencapaian hidupku dengan rasa syukur dan sukacita yang melimpah.",
       symbol: "🌍",
+      imagePath: 'assets/cards/theworld.jpeg'
     ),
   ];
 }

@@ -1,10 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'db_helper.dart';
 
-class AuthService {
+class AuthService extends ChangeNotifier {
   static final AuthService instance = AuthService._init();
   AuthService._init();
 
@@ -69,6 +70,7 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefLastUsernameKey, username.trim());
 
+      notifyListeners();
       return {'success': true, 'user': _currentUser};
     } catch (e) {
       return {'success': false, 'message': 'Oops, gagal daftar: $e'};
@@ -96,6 +98,7 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefLastUsernameKey, user.username);
 
+      notifyListeners();
       return {'success': true, 'user': _currentUser};
     } catch (e) {
       return {'success': false, 'message': 'Oops, gagal masuk: $e'};
@@ -109,6 +112,9 @@ class AuthService {
       if (user != null) {
         _currentUser = user;
         await _saveSession(user.id!, _generateToken(user.username));
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_prefLastUsernameKey, user.username);
+        notifyListeners();
         return true;
       }
       return false;
@@ -120,6 +126,7 @@ class AuthService {
   // Quick switch back to Guest Mode
   void enterGuestMode() {
     _currentUser = null;
+    notifyListeners();
   }
 
   // Save Session
@@ -129,18 +136,44 @@ class AuthService {
     await prefs.setString(_prefTokenKey, token);
   }
 
-  // Get Last Registered or Logged In User Id
+  // Get Last Registered or Logged In User Id (with SQLite fallback)
   Future<int?> getLastSessionUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_prefUserIdKey);
+    final id = prefs.getInt(_prefUserIdKey);
+    if (id != null) return id;
+
+    // Check if any user exists in SQLite
+    final db = await DatabaseHelper.instance.database;
+    if (db != null) {
+      final users = await db.query('users', orderBy: 'id DESC', limit: 1);
+      if (users.isNotEmpty) {
+        final lastId = users.first['id'] as int;
+        await prefs.setInt(_prefUserIdKey, lastId);
+        return lastId;
+      }
+    }
+    return null;
   }
 
   Future<String?> getLastUsername() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_prefLastUsernameKey);
+    final u = prefs.getString(_prefLastUsernameKey);
+    if (u != null && u.isNotEmpty) return u;
+
+    // Check if any user exists in SQLite
+    final db = await DatabaseHelper.instance.database;
+    if (db != null) {
+      final users = await db.query('users', orderBy: 'id DESC', limit: 1);
+      if (users.isNotEmpty) {
+        final lastUsername = users.first['username'] as String;
+        await prefs.setString(_prefLastUsernameKey, lastUsername);
+        return lastUsername;
+      }
+    }
+    return null;
   }
 
-  // Update Full User Profile (Username, Email, Password, Avatar Gender)
+  // Update Full User Profile (Username, Email, Password, Avatar Gender, BirthDate)
   Future<bool> updateFullProfile({
     required String username,
     required String email,
@@ -168,6 +201,7 @@ class AuthService {
       _currentUser = updated;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefLastUsernameKey, username.trim());
+      notifyListeners();
       return true;
     }
     return false;
@@ -192,6 +226,7 @@ class AuthService {
     if (_currentUser?.id != null) {
       await DatabaseHelper.instance.updateUserBiometric(_currentUser!.id!, enabled);
       _currentUser = _currentUser!.copyWith(biometricEnabled: enabled);
+      notifyListeners();
     }
   }
 
@@ -200,5 +235,6 @@ class AuthService {
     _currentUser = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefTokenKey);
+    notifyListeners();
   }
 }

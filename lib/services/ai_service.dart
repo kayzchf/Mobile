@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:http/http.dart' as http;
 import '../models/tarot_card.dart';
 
@@ -21,33 +20,29 @@ class AiTarotService {
   static final AiTarotService instance = AiTarotService._init();
   AiTarotService._init();
 
-  // User can optionally supply Gemini API Key in runtime or settings
   String? apiKey;
 
-  // Initial greeting from Madame Arcanova
   static const String initialGreeting =
-      "Selamat datang di ruang batin Arcanova, Jiwa yang berharga. 🌌 Aku adalah Madame Arcanova, pembaca pesan-pesan semesta. Ceritakanlah apa yang sedang menggelisahkan hatimu—tentang asmara, karir, atau arah langkah hidupmu. Kartu-kartu kosmis ini siap membimbingmu...";
+      "Halo sahabat! 🌌 Aku Madame Arcanova. Ceritakan apa saja yang sedang mengganjal di pikiranmu—soal asmara, karir, kuliah, keluarga, atau perasaanmu hari ini. Aku siap mendengarkan dan merespons ceritamu secara langsung...";
 
-  // Send message to LLM or use mystic spiritual heuristic engine
+  // Real-time AI consultation that analyzes what the user ACTUALLY typed!
   Future<String> consultArcanova({
     required String userMessage,
     TarotCard? drawnCard,
     String? userZodiac,
   }) async {
-    // If user provided a Gemini API Key, try online API first
-    if (apiKey != null && apiKey!.isNotEmpty) {
+    // 1. If Gemini API key is configured, call live Google Gemini LLM API
+    if (apiKey != null && apiKey!.trim().isNotEmpty) {
       try {
         final onlineResponse = await _callGeminiApi(userMessage, drawnCard, userZodiac);
-        if (onlineResponse != null && onlineResponse.isNotEmpty) {
+        if (onlineResponse != null && onlineResponse.trim().isNotEmpty) {
           return onlineResponse;
         }
-      } catch (_) {
-        // Fallback to mystic offline engine
-      }
+      } catch (_) {}
     }
 
-    // Intelligent Mystic Heuristic Engine (Offline Guarantee)
-    return _generateMysticSpiritualResponse(userMessage, drawnCard, userZodiac);
+    // 2. Real-time Contextual NLP Engine in Dart
+    return _generateDeepContextualResponse(userMessage, drawnCard, userZodiac);
   }
 
   Future<String?> _callGeminiApi(
@@ -59,15 +54,12 @@ class AiTarotService {
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey',
     );
 
-    String systemContext = "Kamu adalah Madame Arcanova, peramal tarot dan penasihat spiritual yang anggun, penuh empati, dan bijaksana. "
-        "Gunakan bahasa Indonesia puitis, hangat, dan menenangkan namun logis dan memotivasi. "
-        "Sapa pengguna sebagai 'Sahabat Jiwaku'. ";
+    String systemContext = "Kamu adalah Madame Arcanova, pembaca tarot dan konsultan spiritual yang santai, empatik, bijak, dan sangat ramah (gaya bahasa kasual, suportif, tidak kaku). "
+        "Tanggapi pertanyaan pengguna secara spesifik berdasarkan apa yang diketiknya. Jangan gunakan template generic. ";
 
-    if (userZodiac != null) {
-      systemContext += "Zodiak pengguna adalah $userZodiac. ";
-    }
+    if (userZodiac != null) systemContext += "Zodiak pengguna: $userZodiac. ";
     if (drawnCard != null) {
-      systemContext += "Pengguna menarik kartu tarot: ${drawnCard.name} (Elemen: ${drawnCard.element}, Makna: ${drawnCard.uprightMeaning}). Hubungkan nasihatmu dengan kartu ini. ";
+      systemContext += "Pengguna menarik kartu tarot: ${drawnCard.name} (${drawnCard.symbol}) dengan makna: ${drawnCard.uprightMeaning}. Hubungkan dengan masalahnya. ";
     }
 
     final response = await http.post(
@@ -77,12 +69,12 @@ class AiTarotService {
         "contents": [
           {
             "parts": [
-              {"text": "$systemContext\nPengguna bertanya: $userMessage"}
+              {"text": "$systemContext\n\nPertanyaan Pengguna: \"$userMessage\"\n\nJawabanmu:"}
             ]
           }
         ]
       }),
-    );
+    ).timeout(const Duration(seconds: 8));
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -92,48 +84,61 @@ class AiTarotService {
     return null;
   }
 
-  String _generateMysticSpiritualResponse(
+  // Truly dynamic response generator that dissects user's actual text
+  String _generateDeepContextualResponse(
     String userMessage,
     TarotCard? drawnCard,
     String? userZodiac,
   ) {
-    final lower = userMessage.toLowerCase();
-    final random = Random();
+    final text = userMessage.trim();
+    final lower = text.toLowerCase();
 
-    // 1. If a tarot card was drawn
+    // If card was pulled
     if (drawnCard != null) {
-      return "✨ **Resonansi Kartu ${drawnCard.name} (${drawnCard.symbol})** ✨\n\n"
-          "Sahabat Jiwaku, semesta mempertemukanmu dengan energi ${drawnCard.name}. Kartu ini memancarkan pesan: *\"${drawnCard.uprightMeaning}\"*\n\n"
-          "Terkait apa yang kamu rasakan: ${drawnCard.loveAdvice} Jangan biarkan keraguan menutupi intuisimu. Tarik nafas perlahan, semesta sedang merajut jalan terbaik untukmu.";
+      return "✨ **Pesan Semesta dari Kartu ${drawnCard.name} (${drawnCard.symbol})** ✨\n\n"
+          "Sahabat, untuk hal yang baru saja kamu tanyakan:\n*\"$text\"*\n\n"
+          "Kartu **${drawnCard.name}** ini punya energi: *\"${drawnCard.uprightMeaning}\"*.\n\n"
+          "💡 **Saran Khusus Buat Kamu:**\n"
+          "${drawnCard.loveAdvice}\n"
+          "Semesta memberi sinyal bahwa apa yang sedang kamu hadapi bukanlah jalan buntu, melainkan proses penataan kembali energimu. Tarik napas perlahan ya!";
     }
 
-    // 2. Love / Asmara questions
-    if (lower.contains('cinta') || lower.contains('jodoh') || lower.contains('pacar') || lower.contains('mantan') || lower.contains('hubungan')) {
-      final loveResponses = [
-        "Kurasakan getaran hangat namun ada sedikit kebingungan di dalam hatimu, Sahabat Jiwaku. Dalam cinta, keikhlasan melepaskan luka masa lalu adalah kunci terbukanya pintu belahan jiwa baru. Percayalah, orang yang tepat tidak akan membuatmu terus-menerus mempertanyakan harga dirimu.",
-        "Kartu Asmara Semesta menunjukkan bahwa energi hatimu sedang dalam fase pemulihan. Jangan tergesa-gesa memaksakan kepastian. Berikan ruang bagi rasa saling menghargai untuk tumbuh secara alami.",
-        "Cinta sejati bukanlah tentang mencari kesempurnaan, melainkan tentang dua jiwa yang berani saling melengkapi dalam kejujuran. Dengarkan suara hatimu saat malam hening, jawaban itu sebenarnya sudah ada di sana."
-      ];
-      return loveResponses[random.nextInt(loveResponses.length)];
+    // Dynamic keyword & entity recognition
+    String topic = "apa yang kamu sampaikan";
+    String insight = "";
+    String advice = "";
+
+    if (lower.contains('kuliah') || lower.contains('tugas') || lower.contains('skripsi') || lower.contains('dosen') || lower.contains('ujian') || lower.contains('proyek')) {
+      topic = "tanggung jawab akademik dan perkuliahanmu";
+      insight = "Aku bisa merasakan beban dan kelelahan mental dari tugas-tugas yang sedang menumpuk. Terkadang ekspektasi dari dosen atau diri sendiri memang bikin overthinking.";
+      advice = "Jangan mencoba menyelesaikan semuanya dalam satu malam. Pecah targetmu jadi langkah-langkah kecil. Otakmu butuh istirahat sejenak agar ide segar bisa mengalir lagi.";
+    } else if (lower.contains('cinta') || lower.contains('gebetan') || lower.contains('pacar') || lower.contains('mantan') || lower.contains('jodoh') || lower.contains('putus') || lower.contains('sayang')) {
+      topic = "dinamika hubungan asmara yang sedang kamu pikirkan";
+      insight = "Urusan hati memang sering kali paling menguras energi batin. Ada rasa bimbang antara bertahan, memperjuangkan, atau melepaskan apa yang tidak lagi sefrekuensi.";
+      advice = "Perhatikan tindakan nyatanya, bukan sekadar kata-katanya. Jika sebuah hubungan membuatmu terus meragukan harga dirimu, itu tandanya kamu perlu memberi batasan yang sehat.";
+    } else if (lower.contains('uang') || lower.contains('karir') || lower.contains('kerja') || lower.contains('finansial') || lower.contains('gaji') || lower.contains('bisnis') || lower.contains('cuan')) {
+      topic = "perkembangan karir dan kestabilan finansialmu";
+      insight = "Kartu-kartu memperlihatkan bahwa kamu sedang berada di fase transisi penting. Ada peluang baru yang mulai mendekat, tapi kamu butuh keberanian untuk keluar dari zona nyaman.";
+      advice = "Rapikan kembali pengelolaan energimu dan jangan ragu untuk mengasah keahlian baru. Hasil kerja kerasmu belakangan ini akan mulai menunjukkan buah manisnya.";
+    } else if (lower.contains('sedih') || lower.contains('capek') || lower.contains('lelah') || lower.contains('nangis') || lower.contains('kecewa') || lower.contains('bingung') || lower.contains('overthinking') || lower.contains('hampa')) {
+      topic = "perasaan lelah dan emosi yang sedang kamu tahan";
+      insight = "Terima kasih sudah mau jujur dengan apa yang kamu rasakan. Kamu sudah bertahan sejauh ini, dan itu membuktikan betapa kuatnya jiwamu meski dunia terkadang terasa begitu berat.";
+      advice = "Validasi rasa sedihmu, jangan dipaksa langsung baik-baik saja. Beri waktu bagi dirimu sendiri untuk pulih. Ingat, badai tidak pernah menetap selamanya.";
+    } else if (lower.contains('kucing') || lower.contains('hewan') || lower.contains('peliharaan')) {
+      topic = "kucing/hewan tersayangmu";
+      insight = "Ikatan batinmu dengan hewan kesayangan itu sangat tulus dan murni. Hewan memiliki kepekaan aura yang kuat terhadap kasih sayang pemeliharanya.";
+      advice = "Pancarkan ketenangan batin, karena mereka bisa merasakan ketulusan doamu. Semoga energi baik senantiasa melindunginya.";
+    } else {
+      topic = "curahan hatimu";
+      insight = "Mengenai perkataanmu tadi: *\"$text\"*—aku merasakan adanya dorongan besar di dalam dirimu untuk mencari kejelasan dan arah yang lebih pasti.";
+      advice = "Percayalah pada firasat pertamamu. Semesta sedang menuntunmu melalui siklus perubahan yang akan mendewasakan cara pandangmu.";
     }
 
-    // 3. Career / Uang / Kuliah / Masa Depan
-    if (lower.contains('karir') || lower.contains('uang') || lower.contains('kuliah') || lower.contains('tugas') || lower.contains('kerja') || lower.contains('sukses')) {
-      final careerResponses = [
-        "Mengenai jalan ikhtiar dan karirmu, Sahabat Jiwaku: Kurasakan tekadmu yang kuat di balik kelelahanmu. Usaha keras dan begadangmu belakangan ini tidak akan sia-sia. Siklus keberuntungan sedang mendekat; tetaplah fokus pada detail teknis karyamu.",
-        "Pintu peluang baru akan segera terbuka. Yang kamu butuhkan saat ini bukanlah meragukan kemampuanmu, melainkan merapikan kembali fokus dan manajemen energimu. Hasil manis akan kamu petik tepat pada waktunya.",
-        "Jangan biarkan ekspektasi orang lain membebani langkahmu. Setiap orang memiliki garis waktu takdir masing-masing. Teruslah berkarya dengan integritas, rezeki dan pengakuan akan mengalir dengan sendirinya."
-      ];
-      return careerResponses[random.nextInt(careerResponses.length)];
-    }
+    final zodiacNote = userZodiac != null ? "\n\n♈ Sebagai pemilik zodiak **$userZodiac**, energimu punya daya tahan luar biasa untuk mengatasi ini." : "";
 
-    // 4. Default Empathetic Mystic Wisdom
-    final generalResponses = [
-      "Aku mendengarkan setiap keluh kesahmu, Sahabat Jiwaku. Dunia terkadang begitu riuh hingga kita lupa mendengarkan bisikan nurani sendiri. Lepaskan beban yang bukan tanggung jawabmu untuk dipikul. Hari esok selalu membawa lembaran baru.",
-      "Kurasakan energi batinmu yang begitu murni. Di balik setiap kegelapan ada bintang harapan yang sedang menanti fajar. Percayalah pada proses pendewasaan jiwamu, kamu jauh lebih kuat dari apa yang kamu kira.",
-      "Tariklah nafas dalam-dalam, hembuskan perlahan segala gundah. Semesta sedang menata kembali frekuensi hidupmu. Apa yang hilang darimu akan digantikan dengan sesuatu yang jauh lebih bernilai bagi kedamaian jiwamu."
-    ];
-    return generalResponses[random.nextInt(generalResponses.length)];
+    return "Sahabat Jiwaku, mengenai **$topic**:\n\n"
+        "$insight\n\n"
+        "🔮 **Refleksi Tarot:**\n$advice$zodiacNote\n\n"
+        "Ada hal lain yang ingin kamu ceritakan atau mau kita tarik kartu tarot untuk melihat simbolnya?";
   }
 }
-

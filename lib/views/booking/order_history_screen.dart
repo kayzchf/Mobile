@@ -4,6 +4,7 @@ import '../../models/booking_model.dart';
 import '../../services/db_helper.dart';
 import '../../services/auth_service.dart';
 import '../../services/timezone_service.dart';
+import '../live_chat/reader_chat_screen.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
   const OrderHistoryScreen({super.key});
@@ -33,7 +34,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         });
       }
     } else {
-      if (mounted) setState(() => _isLoading = false);
+      // In guest mode, load all bookings for test presentation
+      final all = await DatabaseHelper.instance.getAllBookedSessions();
+      if (mounted) {
+        setState(() {
+          _bookings = all;
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -152,6 +160,26 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                 ),
                               ],
                             ),
+                            if (isConfirmed) ...[
+                              const SizedBox(height: 14),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ReaderChatScreen(initialBooking: item),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                                label: const Text("Masuk Roomchat Tarot Reader"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.neonPurple,
+                                  minimumSize: const Size.fromHeight(40),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       );
@@ -161,4 +189,3 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     );
   }
 }
-
