@@ -206,9 +206,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     double? width,
     double? height,
     double fallbackFontSize = 30,
-    BoxFit fit = BoxFit.contain,
+    BoxFit fit = BoxFit.cover,
   }) {
-    final imagePath = card.imagePath;
+    final imagePath = card.imagePath?.trim();
 
     if (imagePath == null || imagePath.isEmpty) {
       return Center(
@@ -221,9 +221,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     return Image.asset(
       imagePath,
-      fit: fit,
-      width: width,
-      height: height,
+      fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) {
         return Center(
           child: Text(
@@ -233,6 +231,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         );
       },
     );
+  }
+
+  Color _getElementColor(String element) {
+    switch (element.toLowerCase()) {
+      case 'fire':
+      case 'api':
+        return AppColors.errorCrimson; // Merah untuk Api
+      case 'water':
+      case 'air': 
+        return AppColors.celestialCyan; // Biru untuk Air
+      case 'earth':
+      case 'tanah':
+      case 'bumi':
+        return AppColors.successEmerald; // Hijau untuk Tanah/Bumi
+      case 'wind': // Jika menggunakan elemen udara/angin
+      case 'udara':
+        return Colors.amber; // Kuning/Emas untuk Udara // Warna default jika tidak cocok
+      default:
+        return Colors.grey;
+    }
   }
 
   void _showCardDetailModal(TarotCard card) {
@@ -262,8 +280,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     children: [
                       // Photo/Image Placeholder for Tarot Card
                       Container(
-                        width: 150,
-                        height: 200,
+                        width: 160,
                         decoration: BoxDecoration(
                           color: AppColors.cardSurfaceLight,
                           borderRadius: BorderRadius.circular(16),
@@ -274,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           boxShadow: [
                             BoxShadow(
                               color: AppColors.neonPurple.withValues(alpha: 0.4),
-                              blurRadius: 15,
+                              blurRadius: 10,
                             ),
                           ],
                         ),
@@ -284,7 +301,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           width: 150,
                           height: 200,
                           fallbackFontSize: 54,
-                          fit: BoxFit.contain,
+                          fit: BoxFit.cover,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -298,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       const SizedBox(height: 4),
                       Text(
                         "${card.arcanaType} • Elemen ${card.element}",
-                        style: const TextStyle(color: AppColors.celestialCyan, fontWeight: FontWeight.w500),
+                        style: TextStyle(color: _getElementColor(card.element), fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 20),
 
@@ -312,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ),
                           child: Column(
                             children: [
-                              const Text("✨ AFIRMASI HARI INI ✨", style: TextStyle(color: AppColors.arcaneSilver, fontWeight: FontWeight.bold, fontSize: 12)),
+                              const Text("✨ AFIRMASI ✨", style: TextStyle(color: AppColors.arcaneSilver, fontWeight: FontWeight.bold, fontSize: 12)),
                               const SizedBox(height: 6),
                               Text(
                                 "\"${card.affirmation}\"",
@@ -388,7 +405,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         Text(
                           user != null
                               ? "Hai, ${user.username} ${user.avatarEmoji}"
-                              : "Hai Sahabat! 🌌",
+                              : "Hai Querent! 🌌",
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -577,8 +594,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                             ),
                                             child: Text(
                                               _dailyCard!.element,
-                                              style: const TextStyle(
-                                                color: AppColors.celestialCyan,
+                                              style: TextStyle(
+                                                color: _getElementColor(_dailyCard!.element),
                                                 fontSize: 11,
                                               ),
                                             ),
@@ -652,7 +669,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         _filterCards();
                       },
                       decoration: InputDecoration(
-                        hintText: "Cari nama kartu (The Fool, The Lovers)...",
+                        hintText: "Cari nama kartu (The Fool, The Lovers, ...)",
                         hintStyle: const TextStyle(color: AppColors.mutedSilver, fontSize: 13),
                         prefixIcon: const Icon(Icons.search, color: AppColors.shimmerSilver),
                         fillColor: AppColors.cardSurfaceLight.withValues(alpha: 0.6),
@@ -757,10 +774,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     clipBehavior: Clip.antiAlias,
                                     child: buildTarotImage(
                                       card,
-                                      width: 90,
-                                      height: 105,
                                       fallbackFontSize: 30,
-                                      fit: BoxFit.contain,
+                                      fit: BoxFit.cover,
                                     ),
                                   ),
                                   const SizedBox(height: 12),
@@ -784,7 +799,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     ),
                                     child: Text(
                                       card.element,
-                                      style: const TextStyle(color: AppColors.celestialCyan, fontSize: 10),
+                                      style: TextStyle(color: _getElementColor(card.element), fontSize: 10),
                                     ),
                                   ),
                                 ],
