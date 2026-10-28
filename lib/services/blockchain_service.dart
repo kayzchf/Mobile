@@ -65,6 +65,22 @@ class BlockchainService {
     return newBlock;
   }
 
+  // Mine a manual or user-triggered spiritual affirmation block
+  Future<BlockchainBlock> mineSpiritualBlock({
+    required int userId,
+    required String userName,
+    required String intention,
+  }) async {
+    return recordReadingCertificate(
+      bookingId: 'MINE-${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}',
+      userId: userId,
+      serviceTitle: 'Konsultasi Spiritual & Penyelarasan Energi',
+      clientName: userName,
+      cardsDrawn: ['The Star ⭐', 'The Sun ☀️', 'Wheel of Fortune 🎡'],
+      spiritualSummary: intention,
+    );
+  }
+
   // Verify the entire blockchain integrity
   Future<Map<String, dynamic>> verifyChainIntegrity() async {
     final blocks = await DatabaseHelper.instance.getAllBlocks();
@@ -116,4 +132,3 @@ class BlockchainService {
     return await DatabaseHelper.instance.getAllBlocks();
   }
 }
-

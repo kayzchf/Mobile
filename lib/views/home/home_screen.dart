@@ -525,15 +525,80 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                     const SizedBox(height: 6),
 
-                    // 3D Parallax Tilt Widget
+                    // Gyroscope Real-time Telemetry HUD Chip
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.voidBlack.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: (_tiltPitch.abs() > 0.05 || _tiltRoll.abs() > 0.05)
+                              ? AppColors.celestialCyan
+                              : AppColors.mysticViolet.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.screen_rotation,
+                            size: 16,
+                            color: (_tiltPitch.abs() > 0.05 || _tiltRoll.abs() > 0.05)
+                                ? AppColors.celestialCyan
+                                : AppColors.brightLavender,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "🧭 Gyroscope Tilt: X: ${_tiltRoll.toStringAsFixed(2)} | Y: ${_tiltPitch.toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                color: AppColors.shimmerSilver,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _isSensorsActive ? AppColors.successEmerald.withValues(alpha: 0.2) : Colors.white10,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _isSensorsActive ? "LIVE SENSOR" : "OFF",
+                              style: TextStyle(
+                                color: _isSensorsActive ? AppColors.successEmerald : AppColors.textMuted,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // 3D Parallax Tilt Widget (Gyroscope + Interactive Pan Fallback)
                     Center(
                       child: Transform(
                         transform: Matrix4.identity()
                           ..setEntry(3, 2, 0.001)
-                          ..rotateX(_tiltPitch * 0.15)
-                          ..rotateY(_tiltRoll * 0.15),
+                          ..rotateX(_tiltPitch * 0.25)
+                          ..rotateY(_tiltRoll * 0.25),
                         alignment: Alignment.center,
                         child: GestureDetector(
+                          onPanUpdate: (details) {
+                            setState(() {
+                              _tiltRoll = (_tiltRoll + details.delta.dx * 0.015).clamp(-1.2, 1.2);
+                              _tiltPitch = (_tiltPitch - details.delta.dy * 0.015).clamp(-1.2, 1.2);
+                            });
+                          },
+                          onPanEnd: (_) {
+                            setState(() {
+                              _tiltPitch = 0.0;
+                              _tiltRoll = 0.0;
+                            });
+                          },
                           onTap: () {
                             if (_dailyCard != null) _showCardDetailModal(_dailyCard!);
                           },
@@ -623,11 +688,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          const Icon(Icons.vibration, size: 14, color: AppColors.shimmerSilver),
+                                          const Icon(Icons.screen_rotation, size: 14, color: AppColors.celestialCyan),
+                                          const SizedBox(width: 4),
+                                          const Icon(Icons.vibration, size: 14, color: AppColors.brightLavender),
                                           const SizedBox(width: 6),
                                           Text(
-                                            "Goyang HP kamu untuk kocok kartu!",
-                                            style: TextStyle(color: AppColors.shimmerSilver.withValues(alpha: 0.8), fontSize: 11),
+                                            "Miringkan HP (Gyroscope 3D) • Goyang (Kocok Kartu)",
+                                            style: TextStyle(color: AppColors.shimmerSilver.withValues(alpha: 0.9), fontSize: 11),
                                           ),
                                         ],
                                       ),

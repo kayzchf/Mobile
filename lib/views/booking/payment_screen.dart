@@ -4,6 +4,7 @@ import '../../constants/app_colors.dart';
 import '../../models/booking_model.dart';
 import '../../services/db_helper.dart';
 import '../../services/timezone_service.dart';
+import '../../services/online_cloud_service.dart';
 import 'session_waiting_screen.dart';
 
 class PaymentScreen extends StatefulWidget {
@@ -55,6 +56,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       // 1. Save / Update booking to database as CONFIRMED
       final confirmedBooking = widget.booking.copyWith(paymentStatus: 'CONFIRMED');
       await DatabaseHelper.instance.insertBooking(confirmedBooking);
+
+      // Sync to Cloud PostgreSQL database
+      OnlineCloudService.instance.syncBookingToCloud(confirmedBooking);
 
       await Future.delayed(const Duration(milliseconds: 600));
 

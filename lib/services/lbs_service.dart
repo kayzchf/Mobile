@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 class LbsService {
@@ -69,6 +71,44 @@ class LbsService {
     }
   }
 
+  // Get User's City and Province using OpenStreetMap Nominatim Reverse Geocoding API
+  // Link API: https://nominatim.openstreetmap.org/reverse
+  Future<String> getCurrentCityName() async {
+    try {
+      final pos = await getCurrentPosition();
+      if (pos == null) {
+        return "Kota Semarang, Jawa Tengah (Estimasi)";
+      }
+
+      // Check if running on default Android emulator location (Mountain View, California)
+      if ((pos.latitude - 37.42).abs() < 0.1 && (pos.longitude - (-122.08)).abs() < 0.1) {
+        return "Kota Semarang, Jawa Tengah (Mode Emulator)";
+      }
+
+      final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.latitude}&lon=${pos.longitude}&zoom=10&addressdetails=1',
+      );
+
+      final response = await http.get(
+        url,
+        headers: {'User-Agent': 'ArcanovaTarotApp/1.0 (contact@arcanova.com)'},
+      ).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final addr = data['address'] as Map<String, dynamic>?;
+        if (addr != null) {
+          final city = addr['city'] ?? addr['town'] ?? addr['county'] ?? addr['municipality'] ?? addr['city_district'] ?? "Kota Terdeteksi";
+          final state = addr['state'] ?? addr['region'] ?? addr['province'] ?? "Indonesia";
+          return "$city, $state";
+        }
+      }
+      return "Kota Semarang, Jawa Tengah";
+    } catch (_) {
+      return "Kota Semarang, Jawa Tengah";
+    }
+  }
+
   // Check if user is within the "Secret Astral Aura" radius (< 1.5 km)
   Future<bool> isWithinAuraDiscountZone() async {
     final distanceKm = await getDistanceToSanctuaryKm();
@@ -87,4 +127,3 @@ class LbsService {
     }
   }
 }
-

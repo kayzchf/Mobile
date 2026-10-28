@@ -7,6 +7,8 @@ class UserModel {
   final String timezonePref;
   final String avatarUrl;
   final String avatarGender; // 'male' or 'female'
+  final String role; // 'client' or 'reader'
+  final String currencyPref; // 'IDR', 'USD', 'GBP'
   final bool biometricEnabled;
   final String createdAt;
 
@@ -19,11 +21,18 @@ class UserModel {
     required this.timezonePref,
     this.avatarUrl = '',
     this.avatarGender = 'male',
+    this.role = 'client',
+    this.currencyPref = 'IDR',
     this.biometricEnabled = true,
     String? createdAt,
   }) : createdAt = createdAt ?? DateTime.now().toIso8601String();
 
-  String get avatarEmoji => avatarGender == 'female' ? '👩' : '👨';
+  bool get isReader => role.toLowerCase() == 'reader';
+
+  String get avatarEmoji {
+    if (isReader) return '🧙‍♂️';
+    return avatarGender == 'female' ? '👩' : '👨';
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -35,6 +44,8 @@ class UserModel {
       'timezone_pref': timezonePref,
       'avatar_url': avatarUrl,
       'avatar_gender': avatarGender,
+      'role': role,
+      'currency_pref': currencyPref,
       'biometric_enabled': biometricEnabled ? 1 : 0,
       'created_at': createdAt,
     };
@@ -50,6 +61,8 @@ class UserModel {
       timezonePref: map['timezone_pref'] as String? ?? 'WIB',
       avatarUrl: map['avatar_url'] as String? ?? '',
       avatarGender: map['avatar_gender'] as String? ?? 'male',
+      role: map['role'] as String? ?? 'client',
+      currencyPref: map['currency_pref'] as String? ?? 'IDR',
       biometricEnabled: (map['biometric_enabled'] as int?) != 0,
       createdAt: map['created_at'] as String?,
     );
@@ -64,6 +77,8 @@ class UserModel {
     String? timezonePref,
     String? avatarUrl,
     String? avatarGender,
+    String? role,
+    String? currencyPref,
     bool? biometricEnabled,
     String? createdAt,
   }) {
@@ -76,6 +91,8 @@ class UserModel {
       timezonePref: timezonePref ?? this.timezonePref,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       avatarGender: avatarGender ?? this.avatarGender,
+      role: role ?? this.role,
+      currencyPref: currencyPref ?? this.currencyPref,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -101,7 +118,9 @@ class UserModel {
         if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return 'Aquarius ♒';
         return 'Pisces ♓';
       }
-    } catch (_) {}
-    return 'Mystic Soul ✨';
+      return 'Misteri Jiwa ✨';
+    } catch (_) {
+      return 'Misteri Jiwa ✨';
+    }
   }
 }

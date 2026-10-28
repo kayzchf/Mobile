@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/user_model.dart';
@@ -6,6 +8,8 @@ import '../models/tarot_card.dart';
 import '../models/blockchain_block.dart';
 import '../models/feedback_model.dart';
 import '../constants/tarot_data.dart';
+import 'timezone_service.dart';
+import 'online_cloud_service.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -13,24 +17,10 @@ class DatabaseHelper {
 
   DatabaseHelper._init();
 
-  Future<void> refreshTarotImages() async {
-    final db = await database;
-    if (db == null) return;
-
-    for (final card in TarotDeckData.majorArcanaCards) {
-      await db.update(
-        'tarot_cards',
-        {'image_path': card.imagePath},
-        where: 'id = ?',
-        whereArgs: [card.id],
-      );
-    }
-  }
-  
   Future<Database?> get database async {
     try {
       if (_database != null) return _database!;
-      _database = await _initDB('arcanova_master_v3.db');
+      _database = await _initDB('arcanova_master_v4.db');
       return _database!;
     } catch (_) {
       return null;
@@ -45,11 +35,14 @@ class DatabaseHelper {
       path,
       version: 1,
       onCreate: _createDB,
+      onOpen: (db) async {
+        await _ensureReaderAccount(db);
+      },
     );
   }
 
   Future<void> _createDB(Database db, int version) async {
-    // 1. Users Table
+    // 1. Users Table (with role and currency_pref)
     await db.execute('''
       CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,6 +53,8 @@ class DatabaseHelper {
         timezone_pref TEXT NOT NULL,
         avatar_url TEXT,
         avatar_gender TEXT NOT NULL DEFAULT 'male',
+        role TEXT NOT NULL DEFAULT 'client',
+        currency_pref TEXT NOT NULL DEFAULT 'IDR',
         biometric_enabled INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL
       )
@@ -149,7 +144,60 @@ class DatabaseHelper {
     for (var card in TarotDeckData.majorArcanaCards) {
       batch.insert('tarot_cards', card.toMap());
     }
+
+    // Seed Official Tarot Reader Account
+    const salt = "ARCANOVA_COSMIC_SALT_9999_MYSTIC";
+    final readerHash = sha256.convert(utf8.encode('readernz:$salt')).toString();
+
+    batch.insert('users', {
+      'username': 'arcreader',
+      'email': 'arcreader@arcanova.id',
+      'password_hash': readerHash,
+      'birth_date': '1995-10-24',
+      'timezone_pref': 'WIB',
+      'avatar_url': '',
+      'avatar_gender': 'male',
+      'role': 'reader',
+      'currency_pref': 'IDR',
+      'biometric_enabled': 1,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+
     await batch.commit(noResult: true);
+  }
+
+  Future<void> _ensureReaderAccount(Database db) async {
+    try {
+      const salt = "ARCANOVA_COSMIC_SALT_9999_MYSTIC";
+      final arcreaderHash = sha256.convert(utf8.encode('readernz:$salt')).toString();
+
+      final existing = await db.query('users', where: 'username = ?', whereArgs: ['arcreader']);
+      if (existing.isEmpty) {
+        await db.insert('users', {
+          'username': 'arcreader',
+          'email': 'arcreader@arcanova.id',
+          'password_hash': arcreaderHash,
+          'birth_date': '1995-10-24',
+          'timezone_pref': 'WIB',
+          'avatar_url': '',
+          'avatar_gender': 'male',
+          'role': 'reader',
+          'currency_pref': 'IDR',
+          'biometric_enabled': 1,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } else {
+        await db.update(
+          'users',
+          {
+            'password_hash': arcreaderHash,
+            'role': 'reader',
+          },
+          where: 'username = ?',
+          whereArgs: ['arcreader'],
+        );
+      }
+    } catch (_) {}
   }
 
   // --- USER OPERATIONS ---
@@ -236,6 +284,9 @@ class DatabaseHelper {
     return maps.map((e) => BookingModel.fromMap(e)).toList();
   }
 
+  // Alias for backward-compatibility
+  Future<List<BookingModel>> getUserBookings(int userId) => getBookingsByUser(userId);
+
   Future<List<BookingModel>> getAllBookedSessions() async {
     final db = await database;
     if (db == null) return [];
@@ -249,15 +300,34 @@ class DatabaseHelper {
   }
 
   Future<List<String>> getBookedTimes(String date) async {
-    final db = await database;
-    if (db == null) return [];
-    final maps = await db.query(
-      'bookings',
-      columns: ['session_time_wib'],
-      where: 'session_date = ? AND payment_status != ?',
-      whereArgs: [date, 'CANCELLED'],
-    );
-    return maps.map((e) => e['session_time_wib'] as String).toList();
+    final Set<String> occupied = {};
+    try {
+      final db = await database;
+      if (db != null) {
+        final maps = await db.query(
+          'bookings',
+          columns: ['session_time_wib', 'sessions_count'],
+          where: 'session_date = ? AND payment_status != ?',
+          whereArgs: [date, 'CANCELLED'],
+        );
+        for (final row in maps) {
+          final start = row['session_time_wib'] as String;
+          final count = (row['sessions_count'] as int?) ?? 1;
+          final slots = TimezoneService.instance.getSlotsForSession(start, count);
+          occupied.addAll(slots);
+        }
+      }
+    } catch (_) {}
+
+    // Also include slots from PostgreSQL cloud
+    try {
+      final cloudSlots = await OnlineCloudService.instance.fetchBookedSlotsForDate(date);
+      for (final slot in cloudSlots) {
+        occupied.addAll(TimezoneService.instance.getSlotsForSession(slot, 1));
+      }
+    } catch (_) {}
+
+    return occupied.toList();
   }
 
   Future<int> updateBookingPaymentStatus(String bookingId, String status) async {
@@ -279,21 +349,79 @@ class DatabaseHelper {
     required String sessionDate,
   }) async {
     final db = await database;
-    if (db == null) return 1;
-    return await db.insert('live_reader_chats', {
-      'booking_id': bookingId,
-      'sender': sender,
-      'message': message,
-      'timestamp': DateTime.now().toIso8601String(),
-      'session_date': sessionDate,
-    });
+    int res = 1;
+    if (db != null) {
+      res = await db.insert('live_reader_chats', {
+        'booking_id': bookingId,
+        'sender': sender,
+        'message': message,
+        'timestamp': DateTime.now().toIso8601String(),
+        'session_date': sessionDate,
+      });
+    }
+
+    // Sync to PostgreSQL cloud for real-time emulator <-> physical phone chatting
+    OnlineCloudService.instance.sendLiveChatMessage(
+      bookingId: bookingId,
+      sender: sender,
+      message: message,
+      sessionDate: sessionDate,
+    );
+
+    return res;
+  }
+
+  Future<void> syncCloudChats(String bookingId) async {
+    try {
+      final cloudChats = await OnlineCloudService.instance.fetchLiveChatMessages(bookingId);
+      if (cloudChats.isEmpty) return;
+      final db = await database;
+      if (db == null) return;
+
+      for (final c in cloudChats) {
+        final exists = await db.query(
+          'live_reader_chats',
+          where: 'booking_id = ? AND sender = ? AND message = ?',
+          whereArgs: [bookingId, c['sender'], c['message']],
+          limit: 1,
+        );
+        if (exists.isEmpty) {
+          await db.insert('live_reader_chats', {
+            'booking_id': bookingId,
+            'sender': c['sender'],
+            'message': c['message'],
+            'timestamp': c['timestamp'] ?? DateTime.now().toIso8601String(),
+            'session_date': c['session_date'] ?? '',
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<bool> isChatInitiatedByReader(String bookingId) async {
+    try {
+      await syncCloudChats(bookingId);
+      final db = await database;
+      if (db != null) {
+        final maps = await db.query(
+          'live_reader_chats',
+          where: 'booking_id = ? AND sender = ?',
+          whereArgs: [bookingId, 'reader'],
+          limit: 1,
+        );
+        if (maps.isNotEmpty) return true;
+      }
+    } catch (_) {}
+    return false;
   }
 
   Future<List<Map<String, dynamic>>> getReaderChats(String bookingId) async {
     final db = await database;
     if (db == null) return [];
-    // Auto cleanup chats older than H+3
+    // Auto cleanup chats older than H+3 (3 days)
     await cleanupExpiredChatsH3();
+    // Sync any new messages from cloud first
+    await syncCloudChats(bookingId);
 
     return await db.query(
       'live_reader_chats',
@@ -301,6 +429,22 @@ class DatabaseHelper {
       whereArgs: [bookingId],
       orderBy: 'timestamp ASC',
     );
+  }
+
+  // Get active distinct roomchats for Tarot Reader
+  Future<List<Map<String, dynamic>>> getActiveReaderSessions() async {
+    final db = await database;
+    if (db == null) return [];
+    await cleanupExpiredChatsH3();
+
+    return await db.rawQuery('''
+      SELECT b.id AS booking_id, b.service_title, b.session_date, b.session_time_wib,
+             u.username AS client_name, u.avatar_gender AS client_gender
+      FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.id
+      WHERE b.payment_status = 'CONFIRMED'
+      ORDER BY b.session_date DESC, b.session_time_wib DESC
+    ''');
   }
 
   // Retention Policy: H+3 automatic chat deletion
@@ -319,6 +463,23 @@ class DatabaseHelper {
   }
 
   // --- TAROT CARD OPERATIONS ---
+  Future<void> refreshTarotImages() async {
+    try {
+      final db = await database;
+      if (db == null) return;
+      for (var card in TarotDeckData.majorArcanaCards) {
+        if (card.imagePath != null && card.imagePath!.isNotEmpty) {
+          await db.update(
+            'tarot_cards',
+            {'image_path': card.imagePath},
+            where: 'number = ?',
+            whereArgs: [card.number],
+          );
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<List<TarotCard>> getAllTarotCards() async {
     try {
       final db = await database;

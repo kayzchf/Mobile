@@ -3,6 +3,7 @@ import '../../constants/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
 import '../main_navigation.dart';
+import '../reader_portal/reader_portal_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -62,16 +63,25 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (res['success'] == true) {
+      final user = AuthService.instance.currentUser;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           backgroundColor: AppColors.mysticViolet,
-          content: Text("✨ Halo sahabat, senang melihatmu kembali!"),
+          content: Text("✨ Halo ${user?.username ?? 'sahabat'}, senang melihatmu kembali!"),
         ),
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-      );
+
+      if (user?.isReader == true) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const TarotReaderPortalScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -83,7 +93,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleFingerprintLogin() async {
-    // 1. Check if an account is registered
     await _loadRememberedAccount();
     if (!mounted) return;
     if (_rememberedUserId == null) {
@@ -96,7 +105,6 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // 2. Trigger native fingerprint prompt
     final result = await BiometricService.instance.authenticateWithFingerprint();
 
     if (!mounted) return;
@@ -104,22 +112,30 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result['success'] == true) {
       final loggedIn = await AuthService.instance.loginWithBiometrics(_rememberedUserId!);
       if (loggedIn && mounted) {
+        final user = AuthService.instance.currentUser;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.successEmerald,
-            content: Text("✨ Sidik jari cocok! Selamat datang, ${_rememberedUsername ?? 'Sahabat'}."),
+            content: Text("✨ Sidik jari cocok! Selamat datang, ${user?.username ?? 'Sahabat'}."),
           ),
         );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-        );
+
+        if (user?.isReader == true) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const TarotReaderPortalScreen()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+          );
+        }
         return;
       }
     }
 
     if (!mounted) return;
-    // Show error or guidance
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: AppColors.errorCrimson,
@@ -141,157 +157,150 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 12.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Logo
-                  Center(
-                    child: Container(
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: AppColors.mysticButton,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.mysticViolet.withValues(alpha: 0.5),
-                            blurRadius: 25,
-                            spreadRadius: 3,
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Text("🔮", style: TextStyle(fontSize: 42)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  Center(
-                    child: Text(
-                      "ARCANOVA",
-                      style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                            letterSpacing: 3.5,
-                            color: AppColors.textPrimary,
-                          ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Center(
-                    child: Text(
-                      "Yuk masuk ke akun kamu!",
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.shimmerSilver,
-                          ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Username
-                  TextFormField(
-                    controller: _usernameController,
-                    decoration: const InputDecoration(
-                      labelText: "Username",
-                      hintText: "Ketik username akunmu...",
-                      prefixIcon: Icon(Icons.person_outline),
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty) ? "Username wajib diisi ya!" : null,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Password
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: "Kata Sandi",
-                      hintText: "Masukkan kata sandimu...",
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                          color: AppColors.shimmerSilver,
-                        ),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                      ),
-                    ),
-                    validator: (v) => (v == null || v.isEmpty) ? "Kata sandi wajib diisi ya!" : null,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Login Button
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: AppColors.neonPurple,
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                        : const Text(
-                            "Masuk Sekarang",
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                          ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Fingerprint Biometric Login Button
-                  OutlinedButton.icon(
-                    onPressed: _handleFingerprintLogin,
-                    icon: const Icon(Icons.fingerprint, color: AppColors.celestialCyan, size: 22),
-                    label: Text(
-                      _rememberedUsername != null
-                          ? "Masuk Sidik Jari ($_rememberedUsername)"
-                          : "Masuk dengan Sidik Jari",
-                      style: const TextStyle(color: AppColors.celestialCyan, fontSize: 13),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: AppColors.celestialCyan, width: 1.2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Register Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "Belum punya akun? ",
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                          );
-                        },
-                        child: const Text(
-                          "Daftar di sini yuk!",
-                          style: TextStyle(
-                            color: AppColors.brightLavender,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 10),
+              Center(
+                child: Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppColors.mysticButton,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.neonPurple.withValues(alpha: 0.4),
+                        blurRadius: 20,
+                        spreadRadius: 2,
                       ),
                     ],
                   ),
-                ],
+                  child: const Center(
+                    child: Text("🔮", style: TextStyle(fontSize: 34)),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 16),
+              Text(
+                "MASUK KE ARCANOVA",
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.displayMedium?.copyWith(fontSize: 20),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                "Buka kembali portal takdir dan peta batinmu",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.shimmerSilver, fontSize: 13),
+              ),
+              const SizedBox(height: 28),
+
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _usernameController,
+                      decoration: const InputDecoration(
+                        labelText: "Username atau Email",
+                        prefixIcon: Icon(Icons.person_outline),
+                        hintText: "Ketik username atau email kamu",
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? "Username atau email wajib diisi ya!" : null,
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: "Kata Sandi",
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        hintText: "Ketik kata sandi akunmu",
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                            color: AppColors.shimmerSilver,
+                          ),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                      ),
+                      validator: (v) => (v == null || v.isEmpty) ? "Kata sandi wajib diisi ya!" : null,
+                    ),
+                    const SizedBox(height: 22),
+
+                    // Login Button (Pelanggan)
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _handleLogin,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        backgroundColor: AppColors.neonPurple,
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Text(
+                              "Masuk Akun",
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Fingerprint Biometric Login Button
+                    OutlinedButton.icon(
+                      onPressed: _handleFingerprintLogin,
+                      icon: const Icon(Icons.fingerprint, color: AppColors.celestialCyan, size: 22),
+                      label: Text(
+                        _rememberedUsername != null
+                            ? "Masuk Sidik Jari ($_rememberedUsername)"
+                            : "Masuk dengan Sidik Jari",
+                        style: const TextStyle(color: AppColors.celestialCyan, fontSize: 13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        side: const BorderSide(color: AppColors.celestialCyan, width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Register Link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          "Belum punya akun? ",
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                            );
+                          },
+                          child: const Text(
+                            "Daftar di sini yuk!",
+                            style: TextStyle(
+                              color: AppColors.brightLavender,
+                              fontWeight: FontWeight.bold,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+            ],
           ),
         ),
       ),

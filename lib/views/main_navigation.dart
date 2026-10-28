@@ -101,6 +101,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
           backgroundColor: Colors.transparent,
           indicatorColor: AppColors.neonPurple.withValues(alpha: 0.4),
           elevation: 0,
+          labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
           onDestinationSelected: (index) {
             setState(() => _currentIndex = index);
           },

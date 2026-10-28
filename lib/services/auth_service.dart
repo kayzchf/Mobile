@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
+import 'currency_service.dart';
 import 'db_helper.dart';
 
 class AuthService extends ChangeNotifier {
@@ -17,6 +18,7 @@ class AuthService extends ChangeNotifier {
   UserModel? _currentUser;
   UserModel? get currentUser => _currentUser;
   bool get isAuthenticated => _currentUser != null;
+  bool get isTarotReader => _currentUser?.isReader ?? false;
 
   // Hashing password with SHA-256 + Salt
   String hashPassword(String password) {
@@ -39,6 +41,8 @@ class AuthService extends ChangeNotifier {
     required String birthDate,
     required String timezonePref,
     String avatarGender = 'male',
+    String role = 'client',
+    String currencyPref = 'IDR',
   }) async {
     try {
       final existingUser = await DatabaseHelper.instance.getUserByUsernameOrEmail(username);
@@ -59,6 +63,8 @@ class AuthService extends ChangeNotifier {
         birthDate: birthDate,
         timezonePref: timezonePref,
         avatarGender: avatarGender,
+        role: role,
+        currencyPref: currencyPref,
         biometricEnabled: true,
       );
 
@@ -69,6 +75,11 @@ class AuthService extends ChangeNotifier {
       await _saveSession(id, _generateToken(username));
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefLastUsernameKey, username.trim());
+
+      CurrencyService.instance.syncWithTimezone(
+        timezonePref,
+        preferredInternationalCurrency: currencyPref == 'USD' ? CurrencyType.usd : CurrencyType.gbp,
+      );
 
       notifyListeners();
       return {'success': true, 'user': _currentUser};
@@ -98,11 +109,21 @@ class AuthService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefLastUsernameKey, user.username);
 
+      CurrencyService.instance.syncWithTimezone(
+        user.timezonePref,
+        preferredInternationalCurrency: user.currencyPref == 'USD' ? CurrencyType.usd : CurrencyType.gbp,
+      );
+
       notifyListeners();
       return {'success': true, 'user': _currentUser};
     } catch (e) {
       return {'success': false, 'message': 'Oops, gagal masuk: $e'};
     }
+  }
+
+  // Quick Login as Official Tarot Reader
+  Future<Map<String, dynamic>> loginAsReader() async {
+    return await login(usernameOrEmail: 'arcreader', password: 'readernz');
   }
 
   // Biometric Direct Login
@@ -114,6 +135,12 @@ class AuthService extends ChangeNotifier {
         await _saveSession(user.id!, _generateToken(user.username));
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_prefLastUsernameKey, user.username);
+
+        CurrencyService.instance.syncWithTimezone(
+          user.timezonePref,
+          preferredInternationalCurrency: user.currencyPref == 'USD' ? CurrencyType.usd : CurrencyType.gbp,
+        );
+
         notifyListeners();
         return true;
       }
@@ -126,6 +153,7 @@ class AuthService extends ChangeNotifier {
   // Quick switch back to Guest Mode
   void enterGuestMode() {
     _currentUser = null;
+    CurrencyService.instance.syncWithTimezone('WIB');
     notifyListeners();
   }
 
@@ -145,7 +173,7 @@ class AuthService extends ChangeNotifier {
     // Check if any user exists in SQLite
     final db = await DatabaseHelper.instance.database;
     if (db != null) {
-      final users = await db.query('users', orderBy: 'id DESC', limit: 1);
+      final users = await db.query('users', where: "role = 'client'", orderBy: 'id DESC', limit: 1);
       if (users.isNotEmpty) {
         final lastId = users.first['id'] as int;
         await prefs.setInt(_prefUserIdKey, lastId);
@@ -163,7 +191,7 @@ class AuthService extends ChangeNotifier {
     // Check if any user exists in SQLite
     final db = await DatabaseHelper.instance.database;
     if (db != null) {
-      final users = await db.query('users', orderBy: 'id DESC', limit: 1);
+      final users = await db.query('users', where: "role = 'client'", orderBy: 'id DESC', limit: 1);
       if (users.isNotEmpty) {
         final lastUsername = users.first['username'] as String;
         await prefs.setString(_prefLastUsernameKey, lastUsername);
@@ -173,13 +201,15 @@ class AuthService extends ChangeNotifier {
     return null;
   }
 
-  // Update Full User Profile (Username, Email, Password, Avatar Gender, BirthDate)
+  // Update Full User Profile (Username, Email, Password, Avatar Gender, Timezone, Currency)
   Future<bool> updateFullProfile({
     required String username,
     required String email,
     String? newPassword,
     required String avatarGender,
     String? birthDate,
+    String? timezonePref,
+    String? currencyPref,
   }) async {
     if (_currentUser == null || _currentUser!.id == null) return false;
 
@@ -188,12 +218,17 @@ class AuthService extends ChangeNotifier {
       passwordHash = hashPassword(newPassword.trim());
     }
 
+    final updatedTimezone = timezonePref ?? _currentUser!.timezonePref;
+    final updatedCurrency = currencyPref ?? _currentUser!.currencyPref;
+
     final updated = _currentUser!.copyWith(
       username: username.trim(),
       email: email.trim().toLowerCase(),
       passwordHash: passwordHash,
       avatarGender: avatarGender,
       birthDate: birthDate ?? _currentUser!.birthDate,
+      timezonePref: updatedTimezone,
+      currencyPref: updatedCurrency,
     );
 
     final rows = await DatabaseHelper.instance.updateUser(updated);
@@ -201,6 +236,12 @@ class AuthService extends ChangeNotifier {
       _currentUser = updated;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_prefLastUsernameKey, username.trim());
+
+      CurrencyService.instance.syncWithTimezone(
+        updatedTimezone,
+        preferredInternationalCurrency: updatedCurrency == 'USD' ? CurrencyType.usd : CurrencyType.gbp,
+      );
+
       notifyListeners();
       return true;
     }
@@ -235,6 +276,7 @@ class AuthService extends ChangeNotifier {
     _currentUser = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefTokenKey);
+    CurrencyService.instance.syncWithTimezone('WIB');
     notifyListeners();
   }
 }

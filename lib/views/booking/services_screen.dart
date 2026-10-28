@@ -18,12 +18,65 @@ class ServicesScreen extends StatefulWidget {
 
 class _ServicesScreenState extends State<ServicesScreen> {
   final List<TarotService> _services = TarotService.defaultServices;
-  CurrencyType _selectedCurrency = CurrencyService.instance.currentCurrency;
   int? _expandedServiceId = 1; // Default first service expanded
+  bool _hasActiveBookings = false;
+  BookingModel? _activeReadyBooking;
+  final int _unreadReaderCount = 1; // Unread message badge from Reader
+
+  @override
+  void initState() {
+    super.initState();
+    _checkActiveBookings();
+    CurrencyService.instance.addListener(_onCurrencyChanged);
+    AuthService.instance.addListener(_checkActiveBookings);
+  }
+
+  @override
+  void dispose() {
+    CurrencyService.instance.removeListener(_onCurrencyChanged);
+    AuthService.instance.removeListener(_checkActiveBookings);
+    super.dispose();
+  }
+
+  void _onCurrencyChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _checkActiveBookings() async {
+    final user = AuthService.instance.currentUser;
+    if (user != null && user.id != null) {
+      final bookings = await DatabaseHelper.instance.getUserBookings(user.id!);
+      final confirmed = bookings.where((b) => b.paymentStatus == 'CONFIRMED').toList();
+      BookingModel? readyBooking;
+      for (final b in confirmed) {
+        // Chat button only appears when tarot reader has initiated/opened the chat first
+        final initiated = await DatabaseHelper.instance.isChatInitiatedByReader(b.id);
+        if (initiated) {
+          readyBooking = b;
+          break;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _activeReadyBooking = readyBooking;
+          _hasActiveBookings = readyBooking != null;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _activeReadyBooking = null;
+          _hasActiveBookings = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = AuthService.instance.currentUser;
+    final userCurrency = CurrencyService.instance.currencyCode;
+    final userTz = user?.timezonePref ?? 'WIB';
 
     return Scaffold(
       backgroundColor: AppColors.voidBlack,
@@ -38,86 +91,205 @@ class _ServicesScreenState extends State<ServicesScreen> {
               ),
         ),
         actions: [
-          // Currency Switcher Dropdown (IDR, USD, GBP)
+          // Currency & Timezone Badge (Synced with Profile)
           Container(
             margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: AppColors.cardSurfaceLight,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.shimmerSilver.withValues(alpha: 0.3)),
             ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<CurrencyType>(
-                value: _selectedCurrency,
-                dropdownColor: AppColors.cardSurface,
-                icon: const Icon(Icons.currency_exchange, color: AppColors.shimmerSilver, size: 16),
-                items: const [
-                  DropdownMenuItem(value: CurrencyType.idr, child: Text("IDR (Rp)", style: TextStyle(fontSize: 12, color: Colors.white))),
-                  DropdownMenuItem(value: CurrencyType.usd, child: Text("USD (\$)", style: TextStyle(fontSize: 12, color: Colors.white))),
-                  DropdownMenuItem(value: CurrencyType.gbp, child: Text("GBP (£)", style: TextStyle(fontSize: 12, color: Colors.white))),
-                ],
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() {
-                      _selectedCurrency = val;
-                      CurrencyService.instance.setCurrency(val);
-                    });
-                  }
-                },
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.public, size: 14, color: AppColors.celestialCyan),
+                const SizedBox(width: 6),
+                Text(
+                  "$userTz • $userCurrency",
+                  style: const TextStyle(
+                    color: AppColors.arcaneSilver,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
+      floatingActionButton: _hasActiveBookings
+          ? Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.neonPurple.withValues(alpha: 0.5),
+                    blurRadius: 18,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Badge(
+                label: Text("$_unreadReaderCount"),
+                backgroundColor: AppColors.errorCrimson,
+                textColor: Colors.white,
+                textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                child: FloatingActionButton.extended(
+                  backgroundColor: AppColors.astralIndigo,
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(26),
+                    side: const BorderSide(color: AppColors.celestialCyan, width: 1.5),
+                  ),
+                  onPressed: () {
+                    if (_activeReadyBooking != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ReaderRoomchatScreen(booking: _activeReadyBooking!),
+                        ),
+                      ).then((_) => _checkActiveBookings());
+                    }
+                  },
+                  icon: const Text("🧙‍♂️", style: TextStyle(fontSize: 20)),
+                  label: const Text(
+                    "Chat Tarot Reader",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           children: [
-            // Attractive Mystic Banner
+            // Distinct Hero Banner for "Pilih Sesi Pembacaan Jiwa"
             Container(
-              padding: const EdgeInsets.all(18),
+              margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.astralIndigo, AppColors.cardSurface],
+                gradient: const RadialGradient(
+                  center: Alignment(-0.8, -0.6),
+                  radius: 1.8,
+                  colors: [
+                    Color(0xFF3B1E63),
+                    Color(0xFF1E113A),
+                    Color(0xFF0F081D),
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: AppColors.mysticViolet.withValues(alpha: 0.4)),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(
+                  color: AppColors.arcaneSilver.withValues(alpha: 0.6),
+                  width: 1.5,
+                ),
                 boxShadow: [
-                  BoxShadow(color: AppColors.mysticViolet.withValues(alpha: 0.2), blurRadius: 16),
+                  BoxShadow(
+                    color: AppColors.mysticViolet.withValues(alpha: 0.4),
+                    blurRadius: 22,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 6),
+                  ),
                 ],
               ),
-              child: Row(
+              child: Stack(
                 children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: AppColors.mysticButton,
+                  Positioned(
+                    right: -15,
+                    top: -15,
+                    child: Opacity(
+                      opacity: 0.12,
+                      child: const Text("🔮", style: TextStyle(fontSize: 120)),
                     ),
-                    child: const Center(child: Text("🔮", style: TextStyle(fontSize: 26))),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.neonPurple.withValues(alpha: 0.35),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: AppColors.celestialCyan.withValues(alpha: 0.5)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.auto_awesome, size: 12, color: AppColors.celestialCyan),
+                                  SizedBox(width: 5),
+                                  Text(
+                                    "PORTAL RESMI SANCTUARY",
+                                    style: TextStyle(
+                                      color: AppColors.celestialCyan,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.1,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white10,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                userCurrency,
+                                style: const TextStyle(
+                                  color: AppColors.arcaneSilver,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
                         const Text(
                           "Pilih Sesi Pembacaan Jiwa",
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
+                            letterSpacing: 0.5,
+                          ),
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 6),
                         Text(
                           user != null
-                              ? "Hai ${user.username}, sesi konsultasi dipandu Reader berpengalaman."
-                              : "Mode Tamu • Pilih layanan untuk pesan sesi pribadimu!",
-                          style: TextStyle(
-                            color: user != null ? AppColors.celestialCyan : AppColors.shimmerSilver,
-                            fontSize: 12,
+                              ? "Selamat datang, ${user.username}. Pilih layanan bimbingan hidup, asmara, atau karir bersama Master Alistair."
+                              : "Jelajahi beragam sesi konsultasi batin. Masuk untuk pesan sesi pribadimu!",
+                          style: const TextStyle(
+                            color: AppColors.shimmerSilver,
+                            fontSize: 13,
+                            height: 1.4,
                           ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            const Icon(Icons.nightlight_round, size: 14, color: AppColors.brightLavender),
+                            const SizedBox(width: 6),
+                            Text(
+                              "Jadwal Buka: 21.00 - 03.00 WIB (Interval 30 Menit)",
+                              style: TextStyle(
+                                color: AppColors.brightLavender.withValues(alpha: 0.9),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -125,63 +297,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Live Reader Consultation Banner (WhatsApp Style)
-            InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ReaderChatScreen()),
-                );
-              },
-              borderRadius: BorderRadius.circular(18),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1E1B4B), Color(0xFF111827)],
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.celestialCyan.withValues(alpha: 0.5)),
-                  boxShadow: [
-                    BoxShadow(color: AppColors.celestialCyan.withValues(alpha: 0.1), blurRadius: 10),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.cardSurfaceLight,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.celestialCyan),
-                      ),
-                      child: const Text("🧙‍♂️", style: TextStyle(fontSize: 20)),
-                    ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Konsultasi Live Reader (WA Style)",
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            "Online 09:00 - 18:00 WIB • Lihat jadwal & roomchat",
-                            style: TextStyle(color: AppColors.shimmerSilver, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right, color: AppColors.celestialCyan),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
 
             // Services Cards (Attractive, Expandable & Clear Pricing)
             for (final service in _services) _buildAttractiveServiceCard(context, service),
@@ -380,7 +495,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _BookingModal(service: service, user: user),
-    );
+    ).then((_) => _checkActiveBookings());
   }
 }
 
@@ -455,7 +570,7 @@ class _BookingModalState extends State<_BookingModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: AppColors.errorCrimson,
-          content: Text("Mohon pilih tanggal sesi terlebih dahulu ya!"),
+          content: Text("⚠️ Mohon pilih tanggal sesi konsultasi terlebih dahulu ya!"),
         ),
       );
       return;
@@ -465,7 +580,7 @@ class _BookingModalState extends State<_BookingModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: AppColors.errorCrimson,
-          content: Text("Mohon pilih jam sesi yang kamu inginkan!"),
+          content: Text("⚠️ Mohon pilih salah satu slot jam sesi yang tersedia!"),
         ),
       );
       return;
@@ -508,6 +623,7 @@ class _BookingModalState extends State<_BookingModal> {
     final rawTotal = widget.service.priceIdr * _sessionsCount;
     final formattedTotal = currencyService.formatPrice(rawTotal);
     final dateStr = _selectedDate != null ? "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}" : "Pilih Tanggal";
+    final userTz = widget.user.timezonePref ?? 'WIB';
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.92,
@@ -556,7 +672,7 @@ class _BookingModalState extends State<_BookingModal> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text("$_sessionsCount Sesi Konsultasi", style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                        Text("$_sessionsCount Sesi Konsultasi (${_sessionsCount * widget.service.durationMinutes} Menit)", style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
                         Row(
                           children: [
                             IconButton(
@@ -566,7 +682,7 @@ class _BookingModalState extends State<_BookingModal> {
                             Text("$_sessionsCount", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                             IconButton(
                               icon: const Icon(Icons.add_circle_outline, color: AppColors.celestialCyan),
-                              onPressed: _sessionsCount < 5 ? () => setState(() => _sessionsCount++) : null,
+                              onPressed: _sessionsCount < 6 ? () => setState(() => _sessionsCount++) : null,
                             ),
                           ],
                         ),
@@ -605,93 +721,178 @@ class _BookingModalState extends State<_BookingModal> {
                   ),
                   const SizedBox(height: 18),
 
-                  // 3. Jam Sesi Menarik (Card Pills - NO WIT!)
+                  // 3. Jam Sesi Menarik (Disesuaikan Zona Waktu Pengguna)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("3. Pilih Jam Sesi (Tersedia)", style: TextStyle(color: AppColors.arcaneSilver, fontSize: 14, fontWeight: FontWeight.bold)),
+                      Text("3. Pilih Jam Sesi ($userTz)", style: const TextStyle(color: AppColors.arcaneSilver, fontSize: 14, fontWeight: FontWeight.bold)),
                       if (_isLoadingSlots) const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text("Format jam: WIB • London (GMT). Mudah dibaca tanpa WIT:", style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                  Text("Buka 21.00 - 03.00 WIB • Tampilan otomatis disesuaikan ke $userTz:", style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
                   const SizedBox(height: 10),
 
-                  // Interactive Time Slot Cards
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: TimezoneService.sessionSlots.map((slot) {
-                      final slotWib = slot['wib']!;
-                      final icon = slot['icon']!;
-                      final period = slot['period']!;
-                      final isBooked = _bookedSlots.contains(slotWib);
-                      final isSelected = _selectedSlotWib == slotWib;
-                      final londonTime = TimezoneService.instance.convertFromWib(slotWib, 'London (GMT)');
+                  // Interactive Time Slot Cards with Multi-Session Auto Blocking
+                  Builder(
+                    builder: (context) {
+                      final selectedCoveredSlots = _selectedSlotWib != null
+                          ? TimezoneService.instance.getSlotsForSession(_selectedSlotWib!, _sessionsCount)
+                          : <String>[];
 
-                      return InkWell(
-                        onTap: isBooked ? null : () => setState(() => _selectedSlotWib = slotWib),
-                        borderRadius: BorderRadius.circular(16),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: (MediaQuery.of(context).size.width - 56) / 2, // 2 columns
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isBooked
-                                ? AppColors.voidBlack.withValues(alpha: 0.5)
-                                : isSelected
-                                    ? AppColors.neonPurple.withValues(alpha: 0.35)
-                                    : AppColors.cardSurfaceLight,
+                      return Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: TimezoneService.sessionSlots.map((slot) {
+                          final slotWib = slot['wib']!;
+                          final icon = slot['icon']!;
+                          final period = slot['period']!;
+                          final isBooked = _bookedSlots.contains(slotWib);
+
+                          // Check if picking this slot as start would cause a collision or overflow
+                          final prospectiveChain = TimezoneService.instance.getSlotsForSession(slotWib, _sessionsCount);
+                          final hasConflict = prospectiveChain.length < _sessionsCount ||
+                              prospectiveChain.any((s) => _bookedSlots.contains(s));
+
+                          final isPartOfSelected = selectedCoveredSlots.contains(slotWib);
+                          final sessionIndex = isPartOfSelected ? (selectedCoveredSlots.indexOf(slotWib) + 1) : 0;
+                          final isStartSlot = _selectedSlotWib == slotWib;
+                          final userTimeFormatted = TimezoneService.instance.convertFromWib(slotWib, userTz);
+
+                          final bool isDisabled = isBooked || (hasConflict && !isPartOfSelected);
+
+                          return InkWell(
+                            onTap: isDisabled ? null : () => setState(() => _selectedSlotWib = slotWib),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isBooked
-                                  ? Colors.white10
-                                  : isSelected
-                                      ? AppColors.celestialCyan
-                                      : AppColors.mysticViolet.withValues(alpha: 0.3),
-                              width: isSelected ? 2 : 1,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: (MediaQuery.of(context).size.width - 56) / 2, // 2 columns
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isBooked
+                                    ? AppColors.voidBlack.withValues(alpha: 0.5)
+                                    : isPartOfSelected
+                                        ? AppColors.neonPurple.withValues(alpha: 0.45)
+                                        : isDisabled
+                                            ? const Color(0xFF161224).withValues(alpha: 0.6)
+                                            : AppColors.cardSurfaceLight,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isBooked
+                                      ? Colors.white10
+                                      : isStartSlot
+                                          ? AppColors.celestialCyan
+                                          : isPartOfSelected
+                                              ? AppColors.brightLavender
+                                              : isDisabled
+                                                  ? Colors.white12
+                                                  : AppColors.mysticViolet.withValues(alpha: 0.3),
+                                  width: isPartOfSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(icon, style: const TextStyle(fontSize: 16)),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(icon, style: const TextStyle(fontSize: 16)),
+                                      Text(
+                                        isBooked
+                                            ? "Penuh"
+                                            : isPartOfSelected
+                                                ? "Sesi $sessionIndex/$_sessionsCount"
+                                                : hasConflict
+                                                    ? "Bentrok"
+                                                    : period,
+                                        style: TextStyle(
+                                          color: isBooked
+                                              ? AppColors.errorCrimson
+                                              : isPartOfSelected
+                                                  ? AppColors.celestialCyan
+                                                  : hasConflict
+                                                      ? AppColors.warningOrange
+                                                      : AppColors.shimmerSilver,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
                                   Text(
-                                    isBooked ? "Penuh" : period,
+                                    userTimeFormatted,
                                     style: TextStyle(
-                                      color: isBooked ? AppColors.errorCrimson : AppColors.shimmerSilver,
-                                      fontSize: 10,
+                                      color: isBooked || (isDisabled && !isPartOfSelected)
+                                          ? AppColors.textMuted
+                                          : Colors.white,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.bold,
+                                      decoration: isBooked ? TextDecoration.lineThrough : null,
                                     ),
                                   ),
+                                  if (userTz != 'WIB')
+                                    Text(
+                                      "($slotWib WIB)",
+                                      style: TextStyle(
+                                        color: isBooked ? AppColors.textMuted : AppColors.shimmerSilver.withValues(alpha: 0.7),
+                                        fontSize: 10,
+                                      ),
+                                    ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                "$slotWib WIB",
-                                style: TextStyle(
-                                  color: isBooked ? AppColors.textMuted : Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: isBooked ? TextDecoration.lineThrough : null,
-                                ),
-                              ),
-                              Text(
-                                "🇬🇧 $londonTime",
-                                style: TextStyle(
-                                  color: isBooked ? AppColors.textMuted : AppColors.brightLavender,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                            ),
+                          );
+                        }).toList(),
                       );
-                    }).toList(),
+                    },
                   ),
+
+                  // Dynamic Time Block Range Display (e.g., 21.00 - 22.30 WIB)
+                  if (_selectedSlotWib != null) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.astralIndigo.withValues(alpha: 0.8),
+                            AppColors.neonPurple.withValues(alpha: 0.4),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.celestialCyan),
+                        boxShadow: [
+                          BoxShadow(color: AppColors.celestialCyan.withValues(alpha: 0.15), blurRadius: 10),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.timer_outlined, color: AppColors.celestialCyan, size: 22),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("Rentang Waktu $_sessionsCount Sesi Terblokir ($userTz):", style: const TextStyle(color: AppColors.shimmerSilver, fontSize: 11)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  TimezoneService.instance.calculateTimeRange(
+                                    startWib: _selectedSlotWib!,
+                                    durationMinutesPerSession: widget.service.durationMinutes,
+                                    sessionsCount: _sessionsCount,
+                                    targetTz: userTz,
+                                  ),
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 18),
 
                   // 4. Pilih Pengingat Notifikasi (5 Menit / 10 Menit)

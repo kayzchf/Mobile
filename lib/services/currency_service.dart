@@ -1,8 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 enum CurrencyType { idr, usd, gbp }
 
-class CurrencyService {
+class CurrencyService extends ChangeNotifier {
   static final CurrencyService instance = CurrencyService._init();
   CurrencyService._init();
 
@@ -14,8 +15,21 @@ class CurrencyService {
 
   CurrencyType currentCurrency = CurrencyType.idr;
 
+  // Auto-sync currency based on user's timezone preference
+  void syncWithTimezone(String timezone, {CurrencyType? preferredInternationalCurrency}) {
+    if (timezone.contains('London') || timezone.contains('GMT')) {
+      // If London, allow USD or GBP
+      currentCurrency = preferredInternationalCurrency ?? CurrencyType.gbp;
+    } else {
+      // Indonesian timezones (WIB, WITA, WIT) strictly lock to Rupiah (IDR)
+      currentCurrency = CurrencyType.idr;
+    }
+    notifyListeners();
+  }
+
   void setCurrency(CurrencyType type) {
     currentCurrency = type;
+    notifyListeners();
   }
 
   String get currencyCode {
@@ -79,4 +93,3 @@ class CurrencyService {
     }
   }
 }
-

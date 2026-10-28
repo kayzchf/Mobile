@@ -32,6 +32,7 @@ class _MysticHubScreenState extends State<MysticHubScreen> with SingleTickerProv
 
   // 3. LBS Sanctuary State
   double? _distanceKm;
+  String? _detectedCity;
   bool _isLoadingDistance = false;
   bool _isAuraZone = false;
 
@@ -53,9 +54,11 @@ class _MysticHubScreenState extends State<MysticHubScreen> with SingleTickerProv
   Future<void> _checkSanctuaryDistance() async {
     setState(() => _isLoadingDistance = true);
     final dist = await LbsService.instance.getDistanceToSanctuaryKm();
+    final city = await LbsService.instance.getCurrentCityName();
     if (mounted) {
       setState(() {
         _distanceKm = dist;
+        _detectedCity = city;
         _isAuraZone = (dist != null && dist <= 1.5);
         _isLoadingDistance = false;
       });
@@ -677,6 +680,35 @@ class _MysticHubScreenState extends State<MysticHubScreen> with SingleTickerProv
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Detected User City via Reverse Geocoding LBS
+              if (_detectedCity != null) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.deepSpace,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.brightLavender.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.my_location, color: AppColors.brightLavender, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "Lokasi GPS Terdeteksi: $_detectedCity",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               // Distance & Radar
               Row(

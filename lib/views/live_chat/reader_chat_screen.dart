@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../models/booking_model.dart';
@@ -438,15 +439,23 @@ class _ReaderRoomchatScreenState extends State<ReaderRoomchatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isSending = false;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _loadChatHistory();
+    // Real-time synchronization between physical phone & emulator via PostgreSQL
+    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (mounted) {
+        _loadChatHistory(silent: true);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -457,23 +466,23 @@ class _ReaderRoomchatScreenState extends State<ReaderRoomchatScreen> {
     return nowWib.hour >= 9 && nowWib.hour < 18;
   }
 
-  Future<void> _loadChatHistory() async {
+  Future<void> _loadChatHistory({bool silent = false}) async {
     final list = await DatabaseHelper.instance.getReaderChats(widget.booking.id);
-    if (mounted) {
+    if (!mounted) return;
+
+    if (_messages.length != list.length || !silent) {
       setState(() {
         _messages.clear();
         _messages.addAll(list);
       });
 
-      // If no messages yet, seed opening message
-      if (_messages.isEmpty) {
-        final opening = _isOperationalHours
-            ? "Halo! Salam kenal, aku Master Alistair (Tarot Reader Arcanova). Selamat datang di sesi ${widget.booking.serviceTitle}. Kartu-kartu sudah aku tata di mejaku. Coba ceritakan apa yang ingin kamu gali hari ini?"
-            : "Halo sahabat! Master Alistair saat ini sedang offline (jam operasional live: 09:00 - 18:00 WIB). Namun sesi ini tetap terhubung dengan AI Bot Madame Arcanova. Ceritakan apa saja yang ingin kamu tanyakan ya!";
+      // If viewer is Tarot Reader and room has no messages yet, seed opening message
+      if (_messages.isEmpty && AuthService.instance.isTarotReader) {
+        final opening = "Halo sahabat! Salam kenal, aku Master Alistair (Tarot Reader Arcanova). Selamat datang di sesi ${widget.booking.serviceTitle}. Kartu-kartu sudah aku tata di mejaku. Coba ceritakan apa yang ingin kamu gali hari ini?";
 
         await DatabaseHelper.instance.insertReaderChat(
           bookingId: widget.booking.id,
-          sender: _isOperationalHours ? 'reader' : 'bot',
+          sender: 'reader',
           message: opening,
           sessionDate: widget.booking.sessionDate,
         );
@@ -509,52 +518,39 @@ class _ReaderRoomchatScreenState extends State<ReaderRoomchatScreen> {
     _textController.clear();
     setState(() => _isSending = true);
 
-    // 1. Save user message to SQLite
+    final isReader = AuthService.instance.isTarotReader;
+    final senderRole = isReader ? 'reader' : 'user';
+
+    // 1. Save message to SQLite & PostgreSQL cloud
     await DatabaseHelper.instance.insertReaderChat(
       bookingId: widget.booking.id,
-      sender: 'user',
+      sender: senderRole,
       message: text,
       sessionDate: widget.booking.sessionDate,
     );
 
-    await _loadChatHistory();
+    await _loadChatHistory(silent: true);
 
-    // 2. Simulate Reader response or AI Bot response
-    await Future.delayed(const Duration(milliseconds: 900));
-
-    final isLive = _isOperationalHours;
-    String reply = "";
-
-    if (isLive) {
-      // Live Reader natural conversational response
-      final lower = text.toLowerCase();
-      if (lower.contains('cinta') || lower.contains('jodoh') || lower.contains('pacar') || lower.contains('mantan')) {
-        reply = "Menarik sekali energinya. Aku baru saja membuka kartu The Lovers dan Two of Cups untukmu. "
-            "Semesta menunjukkan bahwa ada hubungan emosional yang intens, tetapi kamu perlu mendengarkan intuisi terdalammu sebelum mengambil keputusan besar. "
-            "Apakah ada hal spesifik dari hubungan ini yang bikin kamu bimbang?";
-      } else if (lower.contains('karir') || lower.contains('kerja') || lower.contains('kuliah') || lower.contains('uang') || lower.contains('tugas')) {
-        reply = "Dari kartu Eight of Pentacles dan The Chariot yang terbuka di mejaku, kerja keras dan ketekunanmu belakangan ini akan membuahkan hasil nyata dalam waktu dekat. "
-            "Kuncinya adalah tetap fokus dan jangan ragu menyuarakan pendapatmu.";
-      } else {
-        reply = "Aku memahami apa yang kamu rasakan mengenai: \"$text\". "
-            "Kartu The Star melambangkan harapan baru dan kejernihan pikiran yang mulai mendekat. Tarik napas perlahan dan lepaskan beban yang bukan menjadi tanggung jawabmu.";
-      }
-    } else {
-      // Outside 09:00 - 18:00 WIB: AI Bot Madame Arcanova replies
+    // 2. If client sends message alone and outside operational hours, bot replies as fallback
+    if (!isReader && !_isOperationalHours) {
+      await Future.delayed(const Duration(milliseconds: 900));
       final aiResponse = await AiTarotService.instance.consultArcanova(userMessage: text);
-      reply = "[🤖 AI Bot Madame Arcanova - Mode Luar Jam Operasional]\n$aiResponse";
-    }
+      final reply = "[🤖 Madame Arcanova - Mode Luar Jam Operasional]\n$aiResponse";
 
-    await DatabaseHelper.instance.insertReaderChat(
-      bookingId: widget.booking.id,
-      sender: isLive ? 'reader' : 'bot',
-      message: reply,
-      sessionDate: widget.booking.sessionDate,
-    );
+      await DatabaseHelper.instance.insertReaderChat(
+        bookingId: widget.booking.id,
+        sender: 'bot',
+        message: reply,
+        sessionDate: widget.booking.sessionDate,
+      );
+
+      if (mounted) {
+        await _loadChatHistory(silent: true);
+      }
+    }
 
     if (mounted) {
       setState(() => _isSending = false);
-      await _loadChatHistory();
     }
   }
 
@@ -671,8 +667,10 @@ class _ReaderRoomchatScreenState extends State<ReaderRoomchatScreen> {
                 itemCount: _messages.length,
                 itemBuilder: (context, index) {
                   final msg = _messages[index];
-                  final isUser = msg['sender'] == 'user';
+                  final isReaderViewer = AuthService.instance.isTarotReader;
+                  final isMe = isReaderViewer ? (msg['sender'] == 'reader') : (msg['sender'] == 'user');
                   final isBot = msg['sender'] == 'bot';
+                  final isReaderMsg = msg['sender'] == 'reader';
                   final timeStr = msg['timestamp'] != null
                       ? DateTime.tryParse(msg['timestamp']) != null
                           ? "${DateTime.parse(msg['timestamp']).hour.toString().padLeft(2, '0')}:${DateTime.parse(msg['timestamp']).minute.toString().padLeft(2, '0')}"
@@ -680,13 +678,13 @@ class _ReaderRoomchatScreenState extends State<ReaderRoomchatScreen> {
                       : "";
 
                   return Align(
-                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                     child: Container(
                       constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
-                        color: isUser
+                        color: isMe
                             ? const Color(0xFF5E2B97) // WhatsApp mystic purple
                             : isBot
                                 ? const Color(0xFF1F2937)
@@ -694,8 +692,8 @@ class _ReaderRoomchatScreenState extends State<ReaderRoomchatScreen> {
                         borderRadius: BorderRadius.only(
                           topLeft: const Radius.circular(16),
                           topRight: const Radius.circular(16),
-                          bottomLeft: Radius.circular(isUser ? 16 : 2),
-                          bottomRight: Radius.circular(isUser ? 2 : 16),
+                          bottomLeft: Radius.circular(isMe ? 16 : 2),
+                          bottomRight: Radius.circular(isMe ? 2 : 16),
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -708,11 +706,15 @@ class _ReaderRoomchatScreenState extends State<ReaderRoomchatScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (!isUser)
+                          if (!isMe)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 4),
                               child: Text(
-                                isBot ? "🤖 Madame Arcanova (Bot)" : "🧙‍♂️ Master Alistair (Reader)",
+                                isBot
+                                    ? "🤖 Madame Arcanova (Bot)"
+                                    : isReaderMsg
+                                        ? "🧙‍♂️ Master Alistair (Reader)"
+                                        : "💬 Klien Arcanova",
                                 style: TextStyle(
                                   color: isBot ? AppColors.warningOrange : AppColors.celestialCyan,
                                   fontSize: 11,
@@ -733,7 +735,7 @@ class _ReaderRoomchatScreenState extends State<ReaderRoomchatScreen> {
                                 timeStr,
                                 style: const TextStyle(color: AppColors.textMuted, fontSize: 9),
                               ),
-                              if (isUser) ...[
+                              if (isMe) ...[
                                 const SizedBox(width: 4),
                                 const Icon(Icons.done_all, size: 12, color: AppColors.celestialCyan),
                               ],

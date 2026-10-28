@@ -18,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _birthDateController = TextEditingController();
 
   String _selectedTimezone = 'WIB';
+  String _selectedGender = 'female'; // 'male' or 'female'
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -72,6 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       password: _passwordController.text,
       birthDate: _birthDateController.text,
       timezonePref: _selectedTimezone,
+      avatarGender: _selectedGender,
     );
 
     setState(() => _isLoading = false);
@@ -137,7 +139,78 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
+
+                // Gender Selection (👨 Cowok / 👩 Cewek)
+                const Text(
+                  "Pilih Karakter Avatar / Gender:",
+                  style: TextStyle(color: AppColors.shimmerSilver, fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _selectedGender = 'female'),
+                        borderRadius: BorderRadius.circular(16),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: _selectedGender == 'female'
+                                ? Colors.pinkAccent.withValues(alpha: 0.25)
+                                : AppColors.cardSurfaceLight,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: _selectedGender == 'female'
+                                  ? Colors.pinkAccent
+                                  : AppColors.mysticViolet.withValues(alpha: 0.3),
+                              width: _selectedGender == 'female' ? 2 : 1,
+                            ),
+                          ),
+                          child: const Column(
+                            children: [
+                              Text("👩", style: TextStyle(fontSize: 28)),
+                              SizedBox(height: 4),
+                              Text("Wanita / Cewek", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _selectedGender = 'male'),
+                        borderRadius: BorderRadius.circular(16),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: _selectedGender == 'male'
+                                ? AppColors.celestialCyan.withValues(alpha: 0.25)
+                                : AppColors.cardSurfaceLight,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: _selectedGender == 'male'
+                                  ? AppColors.celestialCyan
+                                  : AppColors.mysticViolet.withValues(alpha: 0.3),
+                              width: _selectedGender == 'male' ? 2 : 1,
+                            ),
+                          ),
+                          child: const Column(
+                            children: [
+                              Text("👨", style: TextStyle(fontSize: 28)),
+                              SizedBox(height: 4),
+                              Text("Pria / Cowok", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
 
                 // Username
                 TextFormField(
@@ -250,4 +323,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-
