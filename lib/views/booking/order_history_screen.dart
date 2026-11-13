@@ -73,7 +73,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "THE DESTINY CHAIN",
+              "RIWAYAT SESI KAMU",
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: AppColors.brightLavender,
                     letterSpacing: 2,
@@ -81,7 +81,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                   ),
             ),
             const Text(
-              "Riwayat Terverifikasi Blockchain",
+              "Setiap sesi tersimpan & terjamin keasliannya",
               style: TextStyle(color: AppColors.shimmerSilver, fontSize: 11),
             ),
           ],
@@ -250,7 +250,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                                   Icon(Icons.lock, size: 10, color: Color(0xFF34D399)),
                                                   SizedBox(width: 4),
                                                   Text(
-                                                    "Terverifikasi Blockchain",
+                                                    "Sesi Terjamin & Tak Terhapus",
                                                     style: TextStyle(
                                                       color: Color(0xFF34D399),
                                                       fontSize: 9,
@@ -338,9 +338,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                                 ),
                                                 const SizedBox(height: 10),
 
-                                                // Transaction Hash
+                                                // Digital Certificate
                                                 const Text(
-                                                  "Transaction Hash (SHA-256 Ledger):",
+                                                  "Kode Sertifikat Sesi Digital:",
                                                   style: TextStyle(color: AppColors.textMuted, fontSize: 10),
                                                 ),
                                                 const SizedBox(height: 3),
@@ -362,14 +362,14 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                                                         ScaffoldMessenger.of(context).showSnackBar(
                                                           const SnackBar(
                                                             backgroundColor: AppColors.successEmerald,
-                                                            content: Text("✨ Kunci Validasi Blockchain Tersalin!"),
+                                                            content: Text("✨ Sertifikat Sesi Digital Tersalin!"),
                                                             duration: Duration(seconds: 2),
                                                           ),
                                                         );
                                                       },
                                                       icon: const Icon(Icons.copy, size: 13, color: AppColors.celestialCyan),
                                                       label: const Text(
-                                                        "Salin Kunci",
+                                                        "Salin Kode",
                                                         style: TextStyle(color: AppColors.celestialCyan, fontSize: 11),
                                                       ),
                                                       style: TextButton.styleFrom(

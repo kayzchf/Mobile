@@ -109,7 +109,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
             NavigationDestination(
               icon: Icon(Icons.style_outlined, color: AppColors.textMuted),
               selectedIcon: Icon(Icons.style, color: AppColors.brightLavender),
-              label: "Deck",
+              label: "Beranda",
             ),
             NavigationDestination(
               icon: Icon(Icons.auto_awesome_outlined, color: AppColors.textMuted),
@@ -119,7 +119,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> with Widget
             NavigationDestination(
               icon: Icon(Icons.sports_esports_outlined, color: AppColors.textMuted),
               selectedIcon: Icon(Icons.sports_esports, color: AppColors.celestialCyan),
-              label: "Games",
+              label: "Eksplorasi",
             ),
             NavigationDestination(
               icon: Icon(Icons.chat_bubble_outline, color: AppColors.textMuted),

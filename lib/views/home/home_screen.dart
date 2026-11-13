@@ -29,6 +29,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _isSensorsActive = true;
   late AnimationController _flipController;
 
+  bool _isEncyclopediaExpanded = false;
+
   String? _rememberedUsername;
   int? _rememberedUserId;
 
@@ -141,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         duration: const Duration(seconds: 2),
         content: Text(
           isShake
-              ? "✨ [SENSOR GERAK] HP kamu digoyang! Kartu terpilih: ${_dailyCard!.name}"
+              ? "✨ Semesta merasakan getaranmu! Kartu takdirmu: ${_dailyCard!.name}"
               : "🔮 Kartu pilihan semesta: ${_dailyCard!.name}",
         ),
       ),
@@ -525,59 +527,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                     const SizedBox(height: 6),
 
-                    // Gyroscope Real-time Telemetry HUD Chip
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.voidBlack.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: (_tiltPitch.abs() > 0.05 || _tiltRoll.abs() > 0.05)
-                              ? AppColors.celestialCyan
-                              : AppColors.mysticViolet.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.screen_rotation,
-                            size: 16,
-                            color: (_tiltPitch.abs() > 0.05 || _tiltRoll.abs() > 0.05)
-                                ? AppColors.celestialCyan
-                                : AppColors.brightLavender,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              "🧭 Gyroscope Tilt: X: ${_tiltRoll.toStringAsFixed(2)} | Y: ${_tiltPitch.toStringAsFixed(2)}",
-                              style: const TextStyle(
-                                color: AppColors.shimmerSilver,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'monospace',
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: _isSensorsActive ? AppColors.successEmerald.withValues(alpha: 0.2) : Colors.white10,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              _isSensorsActive ? "LIVE SENSOR" : "OFF",
-                              style: TextStyle(
-                                color: _isSensorsActive ? AppColors.successEmerald : AppColors.textMuted,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
                     // 3D Parallax Tilt Widget (Gyroscope + Interactive Pan Fallback)
                     Center(
                       child: Transform(
@@ -710,6 +659,77 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+            // Encyclopedia Entry Button (Progressive Disclosure)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isEncyclopediaExpanded = !_isEncyclopediaExpanded;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.cardSurface, AppColors.astralIndigo],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: _isEncyclopediaExpanded
+                            ? AppColors.neonPurple
+                            : AppColors.mysticViolet.withValues(alpha: 0.4),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Text("🔮", style: TextStyle(fontSize: 24)),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Jelajahi Ensiklopedia 22 Arkana",
+                                style: TextStyle(
+                                  color: AppColors.arcaneSilver,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                "Temukan makna setiap kartu Major Arcana",
+                                style: TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          _isEncyclopediaExpanded
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.keyboard_arrow_down_rounded,
+                          color: AppColors.brightLavender,
+                          size: 24,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Search & Filter — only shown when expanded
+            if (_isEncyclopediaExpanded) ...[
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
             // Search & Filter
             SliverToBoxAdapter(
@@ -878,6 +898,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       ),
                     ),
             ),
+            ], // end if (_isEncyclopediaExpanded)
+
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),
