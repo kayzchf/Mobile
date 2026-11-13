@@ -383,7 +383,6 @@ class OnlineCloudService {
         final bookedSlots = <String>[];
         for (final row in result) {
           final start = row[0] as String?;
-          final count = (row[1] as int?) ?? 1;
           if (start != null) {
             // Add slot and consecutive slots
             bookedSlots.add(start);

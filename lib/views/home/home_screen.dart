@@ -331,7 +331,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           ),
                           child: Column(
                             children: [
-                              const Text("✨ AFIRMASI ✨", style: TextStyle(color: AppColors.arcaneSilver, fontWeight: FontWeight.bold, fontSize: 12)),
+                              const Text("AFIRMASI", style: TextStyle(color: AppColors.arcaneSilver, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2)),
                               const SizedBox(height: 6),
                               Text(
                                 "\"${card.affirmation}\"",
@@ -406,8 +406,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       children: [
                         Text(
                           user != null
-                              ? "Hai, ${user.username} ${user.avatarEmoji}"
-                              : "Hai Querent! 🌌",
+                              ? "Hai, ${user.username}"
+                              : "Hai Querent",
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -426,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                             color: user != null
                                 ? AppColors.brightLavender
                                 : AppColors.shimmerSilver,
-                            fontSize: 11,
+                            fontSize: 12,
                           ),
                         ),
                       ],
@@ -634,18 +634,21 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                                       ),
                                       const SizedBox(height: 12),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          const Icon(Icons.screen_rotation, size: 14, color: AppColors.celestialCyan),
-                                          const SizedBox(width: 4),
-                                          const Icon(Icons.vibration, size: 14, color: AppColors.brightLavender),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            "Miringkan HP (Gyroscope 3D) • Goyang (Kocok Kartu)",
-                                            style: TextStyle(color: AppColors.shimmerSilver.withValues(alpha: 0.9), fontSize: 11),
-                                          ),
-                                        ],
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(Icons.screen_rotation, size: 14, color: AppColors.celestialCyan),
+                                            const SizedBox(width: 4),
+                                            const Icon(Icons.vibration, size: 14, color: AppColors.brightLavender),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              "Miringkan HP (Gyroscope 3D) • Goyang (Kocok Kartu)",
+                                              style: TextStyle(color: AppColors.shimmerSilver, fontSize: 12),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -688,7 +691,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                     child: Row(
                       children: [
-                        const Text("🔮", style: TextStyle(fontSize: 24)),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.voidBlack.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.auto_stories, color: AppColors.celestialCyan, size: 22),
+                        ),
                         const SizedBox(width: 14),
                         const Expanded(
                           child: Column(

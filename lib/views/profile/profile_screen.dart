@@ -616,7 +616,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             border: Border.all(color: AppColors.celestialCyan.withValues(alpha: 0.4)),
                           ),
                           child: Text(
-                            user != null ? "Zodiak: ${user.zodiacSign}" : "Misteri Jiwa ✨",
+                            user != null ? "Zodiak: ${user.zodiacSign}" : "Misteri Jiwa",
                             style: const TextStyle(color: AppColors.celestialCyan, fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         ),
@@ -726,10 +726,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
                       const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.link, color: AppColors.celestialCyan, size: 20),
                           SizedBox(width: 8),
@@ -740,6 +744,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           TextButton.icon(
                             onPressed: _mineSpiritualBlockDialog,
@@ -757,8 +762,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    "📌 Fitur blockchain aktif: Sertifikat digital sesi ramalan & afirmasi batin yang terenkripsi SHA-256 dan immutable. Ketuk tombol 'Tambang' untuk menambahkan blok baru!",
-                    style: TextStyle(color: AppColors.shimmerSilver, fontSize: 11, height: 1.4),
+                    "Fitur blockchain aktif: Sertifikat digital sesi ramalan & afirmasi batin yang terenkripsi SHA-256 dan immutable. Ketuk tombol 'Tambang' untuk menambahkan blok baru!",
+                    style: TextStyle(color: AppColors.shimmerSilver, fontSize: 12, height: 1.4),
                   ),
                 ],
               ),

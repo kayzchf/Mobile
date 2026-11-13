@@ -16,14 +16,14 @@ class AppColors {
 
   // Celestial Accents & Mystic Silver Highlights (Replacing Gold with Silver)
   static const Color celestialCyan = Color(0xFF00D2FF);
-  static const Color arcaneSilver = Color(0xFFE5E7EB);     // Elegant Mystic Silver
-  static const Color shimmerSilver = Color(0xFFD1D5DB);    // Light Silver
-  static const Color mutedSilver = Color(0xFF9CA3AF);      // Soft Muted Silver
+  static const Color arcaneSilver = Color(0xFFF1F5F9);     // Crisp Mystic Silver
+  static const Color shimmerSilver = Color(0xFFE2E8F0);    // Light Silver
+  static const Color mutedSilver = Color(0xFFCBD5E1);      // Soft Readable Silver
 
   // Text Colors
-  static const Color textPrimary = Color(0xFFF9FAFB);
-  static const Color textSecondary = Color(0xFFD1D5DB);
-  static const Color textMuted = Color(0xFF8B8DA5);
+  static const Color textPrimary = Color(0xFFF8FAFC);
+  static const Color textSecondary = Color(0xFFE2E8F0);
+  static const Color textMuted = Color(0xFFB4B7C9);
 
   // Status & Utility Colors
   static const Color successEmerald = Color(0xFF00E676);

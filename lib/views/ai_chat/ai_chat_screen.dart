@@ -172,7 +172,7 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
                   children: [
                     const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(color: AppColors.brightLavender, strokeWidth: 2)),
                     const SizedBox(width: 10),
-                    Text("Madame Arcanova lagi merangkai pesan untukmu...", style: TextStyle(color: AppColors.shimmerSilver.withValues(alpha: 0.8), fontSize: 12)),
+                    const Text("Madame Arcanova lagi merangkai pesan untukmu...", style: TextStyle(color: AppColors.shimmerSilver, fontSize: 12)),
                   ],
                 ),
               ),
@@ -183,10 +183,10 @@ class _AiChatScreenState extends State<AiChatScreen> with TickerProviderStateMix
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 children: [
-                  _buildQuickPrompt("💖 Curhat soal cinta"),
-                  _buildQuickPrompt("💼 Gimana arah karirku?"),
-                  _buildQuickPrompt("✨ Aku lagi overthinking nih"),
-                  _buildQuickPrompt("🃏 Tarik satu kartu acak"),
+                  _buildQuickPrompt("Curhat soal cinta"),
+                  _buildQuickPrompt("Gimana arah karirku?"),
+                  _buildQuickPrompt("Aku lagi overthinking nih"),
+                  _buildQuickPrompt("Tarik satu kartu acak"),
                 ],
               ),
             ),

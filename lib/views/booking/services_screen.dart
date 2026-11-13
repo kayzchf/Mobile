@@ -414,7 +414,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   children: [
                     const Icon(Icons.check_circle, size: 14, color: AppColors.celestialCyan),
                     const SizedBox(width: 6),
-                    Text("Sesi Live 1-on-1 dengan Reader Asli", style: TextStyle(color: AppColors.shimmerSilver.withValues(alpha: 0.9), fontSize: 11)),
+                    Expanded(
+                      child: Text("Sesi Live 1-on-1 dengan Reader Asli", style: TextStyle(color: AppColors.shimmerSilver, fontSize: 12)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -422,7 +424,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   children: [
                     const Icon(Icons.check_circle, size: 14, color: AppColors.celestialCyan),
                     const SizedBox(width: 6),
-                    Text("Tersedia Chat Live WhatsApp Style", style: TextStyle(color: AppColors.shimmerSilver.withValues(alpha: 0.9), fontSize: 11)),
+                    Expanded(
+                      child: Text("Tersedia Chat Live WhatsApp Style", style: TextStyle(color: AppColors.shimmerSilver, fontSize: 12)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -432,7 +436,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Mulai dari", style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                        const Text("Mulai dari", style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
                         Text(
                           formattedPrice,
                           style: const TextStyle(color: AppColors.arcaneSilver, fontWeight: FontWeight.bold, fontSize: 17),
